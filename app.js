@@ -5,9 +5,20 @@ if ('serviceWorker' in navigator) {
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
 let veiculoAtual = null;
 
+// Coloca a data de hoje no calendário logo que abre o app
 document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById('data-historico').valueAsDate = new Date();
     atualizarPatio();
     atualizarHistorico();
+});
+
+// Máscara da placa: põe o traço automático e deixa tudo maiúsculo
+document.getElementById('placa').addEventListener('input', function(e) {
+    let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Arranca tudo que não for letra ou número
+    if (val.length > 3) {
+        val = val.substring(0, 3) + '-' + val.substring(3, 7);
+    }
+    this.value = val;
 });
 
 function showTab(tabId) {
@@ -28,6 +39,7 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     e.target.reset();
+    document.getElementById('hora-entrada').type = 'text'; // Volta o input pra texto depois de salvar
     atualizarPatio();
     showTab('patio');
 });
@@ -63,6 +75,7 @@ function fecharModal() {
     veiculoAtual = null;
 }
 
+// Calculo atualizado: cobra por hora cheia, tolerância de 5 min
 function calcularValor() {
     if(!veiculoAtual) return;
     const horaSaida = document.getElementById('hora-saida').value;
@@ -71,18 +84,16 @@ function calcularValor() {
     const [hEnt, mEnt] = veiculoAtual.horaEntrada.split(':').map(Number);
     const [hSai, mSai] = horaSaida.split(':').map(Number);
     
-    // Calcula o tempo total em minutos pra ficar exato
     let totalMinutos = (hSai * 60 + mSai) - (hEnt * 60 + mEnt);
     if (totalMinutos < 0) totalMinutos += 24 * 60; // Se o cara virar a noite no pátio
 
     let horasCobradas = Math.floor(totalMinutos / 60);
     let minutosRestantes = totalMinutos % 60;
 
-    // Regra da hora cheia com tolerância de 5 minutos
     if (horasCobradas === 0) {
-        horasCobradas = 1; // Ficou menos de 1 hora, paga o mínimo (1 hora)
+        horasCobradas = 1; // Mínimo de 1 hora
     } else if (minutosRestantes > 5) {
-        horasCobradas += 1; // Passou dos 5 minutos de tolerância, cobra a próxima hora cheia
+        horasCobradas += 1; // Passou do choro de 5 min, cobra a próxima
     }
 
     const desconto = Number(document.getElementById('desconto').value) || 0;
@@ -102,7 +113,7 @@ function finalizarSaida() {
     veiculoAtual.horaSaida = calc.horaSaida;
     veiculoAtual.valorPago = calc.total;
     veiculoAtual.pagamento = formPgto;
-    veiculoAtual.data = new Date().toLocaleDateString('pt-BR');
+    veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); // Salva como DD/MM/YYYY
 
     let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     historico.push(veiculoAtual);
@@ -120,13 +131,18 @@ function finalizarSaida() {
 
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const hoje = new Date().toLocaleDateString('pt-BR');
+    
+    const dataInput = document.getElementById('data-historico').value;
+    if(!dataInput) return; 
+    const [ano, mes, dia] = dataInput.split('-');
+    const dataFiltro = `${dia}/${mes}/${ano}`;
+
     const lista = document.getElementById('lista-historico');
     lista.innerHTML = '';
     
     let totalDia = 0;
 
-    historico.filter(v => v.data === hoje).forEach(v => {
+    historico.filter(v => v.data === dataFiltro).forEach(v => {
         totalDia += v.valorPago;
         lista.innerHTML += `
             <div class="card">
