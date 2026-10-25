@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Máscara da placa: põe o traço automático e deixa tudo maiúsculo
 document.getElementById('placa').addEventListener('input', function(e) {
-    let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Arranca tudo que não for letra ou número
+    let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
     if (val.length > 3) {
         val = val.substring(0, 3) + '-' + val.substring(3, 7);
     }
@@ -39,7 +39,7 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     e.target.reset();
-    document.getElementById('hora-entrada').type = 'text'; // Volta o input pra texto depois de salvar
+    document.getElementById('hora-entrada').type = 'text'; 
     atualizarPatio();
     showTab('patio');
 });
@@ -75,7 +75,6 @@ function fecharModal() {
     veiculoAtual = null;
 }
 
-// Calculo atualizado: cobra por hora cheia, tolerância de 5 min
 function calcularValor() {
     if(!veiculoAtual) return;
     const horaSaida = document.getElementById('hora-saida').value;
@@ -85,15 +84,15 @@ function calcularValor() {
     const [hSai, mSai] = horaSaida.split(':').map(Number);
     
     let totalMinutos = (hSai * 60 + mSai) - (hEnt * 60 + mEnt);
-    if (totalMinutos < 0) totalMinutos += 24 * 60; // Se o cara virar a noite no pátio
+    if (totalMinutos < 0) totalMinutos += 24 * 60; 
 
     let horasCobradas = Math.floor(totalMinutos / 60);
     let minutosRestantes = totalMinutos % 60;
 
     if (horasCobradas === 0) {
-        horasCobradas = 1; // Mínimo de 1 hora
+        horasCobradas = 1; 
     } else if (minutosRestantes > 5) {
-        horasCobradas += 1; // Passou do choro de 5 min, cobra a próxima
+        horasCobradas += 1; 
     }
 
     const desconto = Number(document.getElementById('desconto').value) || 0;
@@ -113,7 +112,7 @@ function finalizarSaida() {
     veiculoAtual.horaSaida = calc.horaSaida;
     veiculoAtual.valorPago = calc.total;
     veiculoAtual.pagamento = formPgto;
-    veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); // Salva como DD/MM/YYYY
+    veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); 
 
     let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     historico.push(veiculoAtual);
@@ -156,6 +155,79 @@ function atualizarHistorico() {
     });
 
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
+}
+
+// Função para Gerar o Relatório em PDF
+function gerarPDFDia() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const dataInput = document.getElementById('data-historico').value;
+    if (!dataInput) return alert("Selecione uma data para exportar o relatório!");
+    
+    const [ano, mes, dia] = dataInput.split('-');
+    const dataFiltro = `${dia}/${mes}/${ano}`;
+
+    const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
+
+    if (veiculosDoDia.length === 0) {
+        return alert("Não há registros para exportar nesta data, parceiro!");
+    }
+
+    // Cabeçalho do PDF
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatorio de Fechamento de Caixa - Data: ${dataFiltro}`, 14, 28);
+
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    // Listagem dos veículos
+    let y = 42;
+    let totalGeral = 0;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Placa", 14, y);
+    doc.text("Tipo", 50, y);
+    doc.text("Horario", 90, y);
+    doc.text("Pgto", 130, y);
+    doc.text("Valor", 170, y);
+
+    y += 6;
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    veiculosDoDia.forEach(v => {
+        if (y > 270) { // Se passar da página, cria uma nova
+            doc.addPage();
+            y = 20;
+        }
+        totalGeral += v.valorPago;
+        doc.text(v.placa, 14, y);
+        doc.text(v.tipo.replace('_', ' '), 50, y);
+        doc.text(`${v.horaEntrada} - ${v.horaSaida}`, 90, y);
+        doc.text(v.pagamento.toUpperCase(), 130, y);
+        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 170, y);
+        y += 8;
+    });
+
+    // Rodapé com o Total do Dia
+    y += 5;
+    doc.line(14, y, 196, y);
+    y += 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    // Salva o arquivo PDF
+    doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
 function limparHistorico() {
