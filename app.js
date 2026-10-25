@@ -5,14 +5,19 @@ if ('serviceWorker' in navigator) {
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
 let veiculoAtual = null;
 
-// Coloca a data de hoje no calendário logo que abre o app
+// Inicializa as datas de hoje ao abrir o app
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('data-historico').valueAsDate = new Date();
+    const hoje = new Date();
+    document.getElementById('data-historico').valueAsDate = hoje;
+    document.getElementById('data-inicio').valueAsDate = hoje;
+    document.getElementById('data-fim').valueAsDate = hoje;
+    
     atualizarPatio();
     atualizarHistorico();
+    calcularRelatorioPeriodo();
 });
 
-// Máscara da placa: põe o traço automático e deixa tudo maiúsculo
+// Máscara da placa
 document.getElementById('placa').addEventListener('input', function(e) {
     let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
     if (val.length > 3) {
@@ -125,12 +130,12 @@ function finalizarSaida() {
     fecharModal();
     atualizarPatio();
     atualizarHistorico();
+    calcularRelatorioPeriodo();
     showTab('historico');
 }
 
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    
     const dataInput = document.getElementById('data-historico').value;
     if(!dataInput) return; 
     const [ano, mes, dia] = dataInput.split('-');
@@ -157,7 +162,124 @@ function atualizarHistorico() {
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
 }
 
-// Função para Gerar o Relatório em PDF
+// Função de cálculo do relatório por período
+function calcularRelatorioPeriodo() {
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const inicioStr = document.getElementById('data-inicio').value;
+    const fimStr = document.getElementById('data-fim').value;
+
+    if (!inicioStr || !fimStr) return;
+
+    const dataInicio = new Date(inicioStr + 'T00:00:00');
+    const dataFim = new Date(fimStr + 'T23:59:59');
+
+    const lista = document.getElementById('lista-periodo');
+    lista.innerHTML = '';
+    
+    let totalPeriodo = 0;
+
+    const filtrados = historico.filter(v => {
+        const [d, m, a] = v.data.split('/');
+        const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
+        return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
+    });
+
+    filtrados.forEach(v => {
+        totalPeriodo += v.valorPago;
+        lista.innerHTML += `
+            <div class="card">
+                <div>
+                    <strong>${v.placa}</strong> (${v.pagamento})<br>
+                    <small>${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
+                </div>
+                <strong>R$ ${v.valorPago.toFixed(2)}</strong>
+            </div>
+        `;
+    });
+
+    document.getElementById('total-periodo').innerText = totalPeriodo.toFixed(2);
+}
+
+// Gerar PDF do Período
+function gerarPDFPeriodo() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const inicioStr = document.getElementById('data-inicio').value;
+    const fimStr = document.getElementById('data-fim').value;
+
+    if (!inicioStr || !fimStr) return alert("Selecione a data inicial e final, parceiro!");
+
+    const dataInicio = new Date(inicioStr + 'T00:00:00');
+    const dataFim = new Date(fimStr + 'T23:59:59');
+
+    const [anoI, mesI, diaI] = inicioStr.split('-');
+    const [anoF, mesF, diaF] = fimStr.split('-');
+    const periodoFormatado = `${diaI}/${mesI}/${anoI} até ${diaF}/${mesF}/${anoF}`;
+
+    const filtrados = historico.filter(v => {
+        const [d, m, a] = v.data.split('/');
+        const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
+        return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
+    });
+
+    if (filtrados.length === 0) {
+        return alert("Não há registros neste período para exportar!");
+    }
+
+    // Cabeçalho PDF
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatorio Consolidado por Periodo: ${periodoFormatado}`, 14, 28);
+
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    let y = 42;
+    let totalGeral = 0;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Data", 14, y);
+    doc.text("Placa", 50, y);
+    doc.text("Tipo", 85, y);
+    doc.text("Pgto", 125, y);
+    doc.text("Valor", 165, y);
+
+    y += 6;
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    filtrados.forEach(v => {
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
+        }
+        totalGeral += v.valorPago;
+        doc.text(v.data, 14, y);
+        doc.text(v.placa, 50, y);
+        doc.text(v.tipo.replace('_', ' '), 85, y);
+        doc.text(v.pagamento.toUpperCase(), 125, y);
+        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 165, y);
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(14, y, 196, y);
+    y += 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
+}
+
 function gerarPDFDia() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -175,7 +297,6 @@ function gerarPDFDia() {
         return alert("Não há registros para exportar nesta data, parceiro!");
     }
 
-    // Cabeçalho do PDF
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
@@ -187,7 +308,6 @@ function gerarPDFDia() {
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
-    // Listagem dos veículos
     let y = 42;
     let totalGeral = 0;
 
@@ -204,7 +324,7 @@ function gerarPDFDia() {
 
     doc.setFont("helvetica", "normal");
     veiculosDoDia.forEach(v => {
-        if (y > 270) { // Se passar da página, cria uma nova
+        if (y > 270) {
             doc.addPage();
             y = 20;
         }
@@ -217,7 +337,6 @@ function gerarPDFDia() {
         y += 8;
     });
 
-    // Rodapé com o Total do Dia
     y += 5;
     doc.line(14, y, 196, y);
     y += 10;
@@ -226,7 +345,6 @@ function gerarPDFDia() {
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
 
-    // Salva o arquivo PDF
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
@@ -234,5 +352,6 @@ function limparHistorico() {
     if(confirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!")) {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
+        calcularRelatorioPeriodo();
     }
 }
