@@ -59,22 +59,41 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     showTab('patio', patioBtn);
 });
 
+// Atualiza a listagem do pátio com o botão de Dar Saída e o de Excluir
 function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
     lista.innerHTML = '';
 
+    if (patio.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum veículo no pátio no momento.</p>';
+        return;
+    }
+
     patio.forEach(v => {
         lista.innerHTML += `
-            <div class="card" onclick="abrirSaida(${v.id})">
-                <div>
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex-grow: 1; cursor: pointer;" onclick="abrirSaida(${v.id})">
                     <strong>${v.placa}</strong> - ${v.tipo.replace('_', ' ')} <br>
                     <small>Entrada: ${v.horaEntrada}</small>
                 </div>
-                <button>Dar Saída</button>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="abrirSaida(${v.id})">Dar Saída</button>
+                    <button onclick="excluirPatio(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer;">Excluir</button>
+                </div>
             </div>
         `;
     });
+}
+
+// Função para excluir um veículo direto do Pátio
+function excluirPatio(id) {
+    if (confirm("Certeza que deseja remover este veículo do pátio, parceiro?")) {
+        let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+        patio = patio.filter(v => v.id !== id);
+        localStorage.setItem('nove1_patio', JSON.stringify(patio));
+        atualizarPatio();
+    }
 }
 
 function abrirSaida(id) {
@@ -147,6 +166,7 @@ function finalizarSaida() {
     showTab('historico', historicoBtn);
 }
 
+// Atualiza o histórico diário com botão de excluir individual
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
@@ -158,21 +178,40 @@ function atualizarHistorico() {
     lista.innerHTML = '';
     
     let totalDia = 0;
+    const filtrados = historico.filter(v => v.data === dataFiltro);
 
-    historico.filter(v => v.data === dataFiltro).forEach(v => {
+    if (filtrados.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado nesta data.</p>';
+    }
+
+    filtrados.forEach(v => {
         totalDia += v.valorPago;
         lista.innerHTML += `
-            <div class="card">
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <strong>${v.placa}</strong> (${v.pagamento})<br>
                     <small>${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
-                <strong>R$ ${v.valorPago.toFixed(2)}</strong>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <strong>R$ ${v.valorPago.toFixed(2)}</strong>
+                    <button onclick="excluirHistorico(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">X</button>
+                </div>
             </div>
         `;
     });
 
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
+}
+
+// Função para excluir um item específico do histórico
+function excluirHistorico(id) {
+    if (confirm("Tem certeza que quer apagar este registro do histórico?")) {
+        let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+        historico = historico.filter(v => v.id !== id);
+        localStorage.setItem('nove1_historico', JSON.stringify(historico));
+        atualizarHistorico();
+        calcularRelatorioPeriodo();
+    }
 }
 
 function calcularRelatorioPeriodo() {
@@ -329,10 +368,11 @@ function gerarPDFDia() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão: Salva automaticamente no pátio e abre o PDF para o iOS
+// Função de Impressão: Salva automaticamente no pátio e abre o PDF
 function imprimirTicketEntrada() {
     const placaInput = document.getElementById('placa');
     const tipoSelect = document.getElementById('tipo');
@@ -346,18 +386,15 @@ function imprimirTicketEntrada() {
         return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
     }
 
-    // 1. Salva automaticamente no Pátio (LocalStorage)
     const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     patio.push(veiculo);
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
-    // Limpa o formulário e atualiza o pátio em segundo plano
     document.getElementById('form-entrada').reset();
     horaEntradaInput.type = 'text'; 
     atualizarPatio();
 
-    // 2. Gera o Ticket em PDF via Blob URL
     let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
