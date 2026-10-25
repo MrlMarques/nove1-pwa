@@ -26,11 +26,12 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 
+/* Logo ajustada para o tamanho ideal de cabeçalho */
 .logo-header {
-    max-width: 250px;
+    max-width: 160px;
     width: 100%;
     height: auto;
-    margin: 0 auto 15px auto;
+    margin: 0 auto 10px auto;
     display: block;
 }
 
