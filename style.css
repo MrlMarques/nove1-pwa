@@ -13,6 +13,8 @@
     --accent-dark: #adac01; 
     --border-color: #797c7b; 
     --card-bg: #1a1a1a; 
+    --danger-color: #ff3333;
+    --edit-color: #f0ad4e;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
@@ -71,10 +73,23 @@ input, select { padding: 12px; background: var(--card-bg); border: 1px solid var
 input:focus, select:focus { outline: none; border-color: var(--accent-light); }
 
 button { padding: 12px; background-color: var(--accent-light); color: var(--bg-color); border: none; font-size: 0.9em; cursor: pointer; border-radius: 5px; }
-button.btn-danger { background-color: #ff3333; color: white; }
+button.btn-danger { background-color: var(--danger-color); color: white; }
 button.btn-success { background-color: var(--accent-dark); color: white; }
 
-.card { background: var(--card-bg); padding: 15px; margin-bottom: 10px; border-left: 4px solid var(--accent-light); border-radius: 5px; display: flex; justify-content: space-between; align-items: center; border-right: 1px solid var(--border-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+/* Card responsivo: Placa em cima, botões organizados lado a lado embaixo */
+.card {
+    background: var(--card-bg);
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--accent-light);
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-right: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
 
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
 .modal-content { background: var(--bg-color); padding: 20px; border: 2px solid var(--accent-light); border-radius: 10px; width: 90%; max-width: 400px; }
