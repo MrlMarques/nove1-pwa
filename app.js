@@ -54,7 +54,6 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     document.getElementById('hora-entrada').type = 'text'; 
     atualizarPatio();
     
-    // Força ir para a aba de Pátio acendendo o botão correspondente
     const patioBtn = document.querySelectorAll('nav button')[1];
     showTab('patio', patioBtn);
 });
@@ -143,7 +142,6 @@ function finalizarSaida() {
     atualizarHistorico();
     calcularRelatorioPeriodo();
     
-    // Força ir para a aba de Histórico acendendo o botão correspondente
     const historicoBtn = document.querySelectorAll('nav button')[2];
     showTab('historico', historicoBtn);
 }
@@ -176,7 +174,6 @@ function atualizarHistorico() {
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
 }
 
-// Cálculo do relatório por período
 function calcularRelatorioPeriodo() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const inicioStr = document.getElementById('data-inicio').value;
@@ -214,11 +211,9 @@ function calcularRelatorioPeriodo() {
     document.getElementById('total-periodo').innerText = totalPeriodo.toFixed(2);
 }
 
-// Gerar PDF do Período
 function gerarPDFPeriodo() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const inicioStr = document.getElementById('data-inicio').value;
     const fimStr = document.getElementById('data-fim').value;
@@ -227,7 +222,6 @@ function gerarPDFPeriodo() {
 
     const dataInicio = new Date(inicioStr + 'T00:00:00');
     const dataFim = new Date(fimStr + 'T23:59:59');
-
     const [anoI, mesI, diaI] = inicioStr.split('-');
     const [anoF, mesF, diaF] = fimStr.split('-');
     const periodoFormatado = `${diaI}/${mesI}/${anoI} até ${diaF}/${mesF}/${anoF}`;
@@ -238,41 +232,32 @@ function gerarPDFPeriodo() {
         return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
     });
 
-    if (filtrados.length === 0) {
-        return alert("Não há registros neste período para exportar!");
-    }
+    if (filtrados.length === 0) return alert("Não há registros neste período para exportar!");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.text(`Relatorio Consolidado por Periodo: ${periodoFormatado}`, 14, 28);
-
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
     let y = 42;
     let totalGeral = 0;
-
     doc.setFont("helvetica", "bold");
     doc.text("Data", 14, y);
     doc.text("Placa", 50, y);
     doc.text("Tipo", 85, y);
     doc.text("Pgto", 125, y);
     doc.text("Valor", 165, y);
-
     y += 6;
     doc.line(14, y, 196, y);
     y += 8;
 
     doc.setFont("helvetica", "normal");
     filtrados.forEach(v => {
-        if (y > 270) {
-            doc.addPage();
-            y = 20;
-        }
+        if (y > 270) { doc.addPage(); y = 20; }
         totalGeral += v.valorPago;
         doc.text(v.data, 14, y);
         doc.text(v.placa, 50, y);
@@ -285,63 +270,49 @@ function gerarPDFPeriodo() {
     y += 5;
     doc.line(14, y, 196, y);
     y += 10;
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);
-
     doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
 }
 
-// Gerar PDF do Dia
 function gerarPDFDia() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
     if (!dataInput) return alert("Selecione uma data para exportar o relatório!");
     
     const [ano, mes, dia] = dataInput.split('-');
     const dataFiltro = `${dia}/${mes}/${ano}`;
-
     const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
 
-    if (veiculosDoDia.length === 0) {
-        return alert("Não há registros para exportar nesta data, parceiro!");
-    }
+    if (veiculosDoDia.length === 0) return alert("Não há registros para exportar nesta data, parceiro!");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.text(`Relatorio de Fechamento de Caixa - Data: ${dataFiltro}`, 14, 28);
-
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
     let y = 42;
     let totalGeral = 0;
-
     doc.setFont("helvetica", "bold");
     doc.text("Placa", 14, y);
     doc.text("Tipo", 50, y);
     doc.text("Horario", 90, y);
     doc.text("Pgto", 130, y);
     doc.text("Valor", 170, y);
-
     y += 6;
     doc.line(14, y, 196, y);
     y += 8;
 
     doc.setFont("helvetica", "normal");
     veiculosDoDia.forEach(v => {
-        if (y > 270) {
-            doc.addPage();
-            y = 20;
-        }
+        if (y > 270) { doc.addPage(); y = 20; }
         totalGeral += v.valorPago;
         doc.text(v.placa, 14, y);
         doc.text(v.tipo.replace('_', ' '), 50, y);
@@ -354,15 +325,13 @@ function gerarPDFDia() {
     y += 5;
     doc.line(14, y, 196, y);
     y += 10;
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
-
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão via PDF Térmico com Iframe para iOS
+// Função de Impressão via Blob URL (Abre com botão de retorno/concluído no iOS)
 function imprimirTicketEntrada() {
     const placa = document.getElementById('placa').value.toUpperCase();
     const tipoSelect = document.getElementById('tipo');
@@ -413,23 +382,18 @@ function imprimirTicketEntrada() {
     y += 5;
     doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
-    const pdfDataUri = doc.output('datauristring');
+    // Gera o Blob do PDF e abre em uma nova aba segura do navegador
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
     
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    iframe.src = pdfDataUri;
-    document.body.appendChild(iframe);
-
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(() => {
-            document.body.removeChild(iframe);
-        }, 1000);
-    }, 500);
+    const novaJanela = window.open(blobUrl, '_blank');
+    if (!novaJanela) {
+        // Fallback caso o navegador bloqueie o pop-up no PWA
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.click();
+    }
 }
 
 function limparHistorico() {
