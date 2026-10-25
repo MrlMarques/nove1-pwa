@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nove1-cache-v6'; 
+const CACHE_NAME = 'nove1-cache-v7'; 
 const urlsToCache = [
   './',
   './index.html',
@@ -33,7 +33,6 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Ignora requisições externas do jsPDF para não quebrar o cache offline
   if (event.request.url.includes('cdnjs.cloudflare.com')) {
     event.respondWith(fetch(event.request));
     return;
