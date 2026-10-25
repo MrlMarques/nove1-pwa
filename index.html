@@ -13,15 +13,15 @@
     <header>
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
-            <button onclick="showTab('entrada')">Entrada</button>
-            <button onclick="showTab('patio')">Pátio</button>
-            <button onclick="showTab('historico')">Histórico</button>
-            <button onclick="showTab('relatorios')">Relatórios</button>
+            <button onclick="showTab('entrada')" class="tab-btn active">Entrada</button>
+            <button onclick="showTab('patio')" class="tab-btn">Pátio</button>
+            <button onclick="showTab('historico')" class="tab-btn">Histórico</button>
+            <button onclick="showTab('relatorios')" class="tab-btn">Relatórios</button>
         </nav>
     </header>
 
     <main>
-        <!-- Aba de Entrada com botão de Imprimir Ticket de Entrada -->
+        <!-- Aba de Entrada -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
@@ -73,7 +73,7 @@
         </section>
     </main>
 
-    <!-- Modal de Saída (Limpo, sem o botão de impressão) -->
+    <!-- Modal de Saída -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
