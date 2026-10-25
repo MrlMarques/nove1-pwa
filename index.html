@@ -6,7 +6,7 @@
     <title>Nove1 - Estacionamento</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <!-- Biblioteca jsPDF para gerar o PDF direto no navegador -->
+    <!-- Biblioteca jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -16,6 +16,7 @@
             <button onclick="showTab('entrada')">Entrada</button>
             <button onclick="showTab('patio')">Pátio</button>
             <button onclick="showTab('historico')">Histórico</button>
+            <button onclick="showTab('relatorios')">Relatórios</button>
         </nav>
     </header>
 
@@ -42,16 +43,31 @@
             <div id="lista-patio"></div>
         </section>
 
-        <!-- Aba de Histórico -->
+        <!-- Aba de Histórico (Mantém o diário) -->
         <section id="historico" class="tab">
             <h2>Histórico por Data</h2>
             <input type="date" id="data-historico" onchange="atualizarHistorico()" style="margin-bottom: 15px;">
             <div class="resumo-dia">Total: R$ <span id="total-dia">0.00</span></div>
             <div id="lista-historico"></div>
-            
-            <!-- Botão para gerar o PDF do dia -->
             <button onclick="gerarPDFDia()" class="btn-success" style="margin-top: 15px;">Exportar Relatório PDF</button>
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px;">Limpar Histórico</button>
+        </section>
+
+        <!-- Nova Aba de Relatórios por Período -->
+        <section id="relatorios" class="tab">
+            <h2>Relatório por Período</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                <label style="color: var(--accent-light); font-size: 0.9em;">Data Inicial:</label>
+                <input type="date" id="data-inicio" onchange="calcularRelatorioPeriodo()">
+                
+                <label style="color: var(--accent-light); font-size: 0.9em;">Data Final:</label>
+                <input type="date" id="data-fim" onchange="calcularRelatorioPeriodo()">
+            </div>
+
+            <div class="resumo-dia">Total do Período: R$ <span id="total-periodo">0.00</span></div>
+            <div id="lista-periodo"></div>
+            
+            <button onclick="gerarPDFPeriodo()" class="btn-success" style="margin-top: 15px;">Exportar Período em PDF</button>
         </section>
     </main>
 
