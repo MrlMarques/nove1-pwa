@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nove1 - Estacionamento</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <header>
+        <h1>Nove1</h1>
+        <nav>
+            <button onclick="showTab('entrada')">Entrada</button>
+            <button onclick="showTab('patio')">Pátio</button>
+            <button onclick="showTab('historico')">Histórico</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Aba de Entrada -->
+        <section id="entrada" class="tab active">
+            <h2>Registrar Entrada</h2>
+            <form id="form-entrada">
+                <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" required uppercase>
+                <select id="tipo" required>
+                    <option value="" disabled selected>Tipo de Veículo</option>
+                    <option value="moto">Moto (R$2/h)</option>
+                    <option value="carro">Carro (R$4/h)</option>
+                    <option value="carro_grande">Carro Grande (R$8/h)</option>
+                </select>
+                <input type="time" id="hora-entrada" required>
+                <button type="submit">Salvar Entrada</button>
+            </form>
+        </section>
+
+        <!-- Aba de Pátio -->
+        <section id="patio" class="tab">
+            <h2>Veículos no Pátio</h2>
+            <div id="lista-patio"></div>
+        </section>
+
+        <!-- Aba de Histórico -->
+        <section id="historico" class="tab">
+            <h2>Histórico do Dia</h2>
+            <div class="resumo-dia">Total: R$ <span id="total-dia">0.00</span></div>
+            <div id="lista-historico"></div>
+            <button onclick="limparHistorico()" class="btn-danger">Limpar Histórico</button>
+        </section>
+    </main>
+
+    <!-- Modal de Saída (Fica escondido até clicar em um veículo) -->
+    <div id="modal-saida" class="modal">
+        <div class="modal-content">
+            <h3>Registrar Saída: <span id="modal-placa"></span></h3>
+            <input type="time" id="hora-saida" required>
+            <input type="number" id="desconto" placeholder="Desconto (R$)" value="0">
+            <select id="pagamento">
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+                <option value="dinheiro">Dinheiro</option>
+            </select>
+            <p>Total a pagar: R$ <span id="valor-calculado">0.00</span></p>
+            <button onclick="calcularValor()">Calcular Valor</button>
+            <button onclick="finalizarSaida()" class="btn-success">Finalizar e Receber</button>
+            <button onclick="fecharModal()" class="btn-danger">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
