@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     calcularRelatorioPeriodo();
 });
 
-// Máscara da placa
+// Máscara da placa: põe o traço automático e deixa tudo maiúsculo
 document.getElementById('placa').addEventListener('input', function(e) {
     let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
     if (val.length > 3) {
@@ -80,6 +80,7 @@ function fecharModal() {
     veiculoAtual = null;
 }
 
+// Calculo atualizado: cobra por hora cheia, tolerância de 5 min
 function calcularValor() {
     if(!veiculoAtual) return;
     const horaSaida = document.getElementById('hora-saida').value;
@@ -162,7 +163,7 @@ function atualizarHistorico() {
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
 }
 
-// Função de cálculo do relatório por período
+// Cálculo do relatório por período
 function calcularRelatorioPeriodo() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const inicioStr = document.getElementById('data-inicio').value;
@@ -228,7 +229,6 @@ function gerarPDFPeriodo() {
         return alert("Não há registros neste período para exportar!");
     }
 
-    // Cabeçalho PDF
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
@@ -280,6 +280,7 @@ function gerarPDFPeriodo() {
     doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
 }
 
+// Gerar PDF do Dia
 function gerarPDFDia() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -346,6 +347,41 @@ function gerarPDFDia() {
     doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
 
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
+}
+
+// Função de Impressão Térmica via RawBT
+function imprimirTicket() {
+    if (!veiculoAtual) return alert("Nenhum veículo selecionado, parceiro!");
+    
+    const horaSaida = document.getElementById('hora-saida').value;
+    if (!horaSaida) return alert("Calcula ou bota a hora de saída antes de imprimir!");
+
+    const desconto = Number(document.getElementById('desconto').value) || 0;
+    const pagamento = document.getElementById('pagamento').value.toUpperCase();
+    const valorCalculado = document.getElementById('valor-calculado').innerText;
+
+    let textoTicket = "";
+    textoTicket += "================================\n";
+    textoTicket += "    NOVE1 ESTETICA AUTOMOTIVA   \n";
+    textoTicket += "================================\n";
+    textoTicket += `PLACA: ${veiculoAtual.placa}\n`;
+    textoTicket += `TIPO: ${veiculoAtual.tipo.toUpperCase().replace('_', ' ')}\n`;
+    textoTicket += `ENTRADA: ${veiculoAtual.horaEntrada}\n`;
+    textoTicket += `SAIDA: ${horaSaida}\n`;
+    if (desconto > 0) {
+        textoTicket += `DESCONTO: R$ ${desconto.toFixed(2)}\n`;
+    }
+    textoTicket += `PAGAMENTO: ${pagamento}\n`;
+    textoTicket += "--------------------------------\n";
+    textoTicket += `TOTAL PAGO: R$ ${valorCalculado}\n`;
+    textoTicket += "================================\n";
+    textoTicket += "     OBRIGADO PELA PREFERENCIA  \n";
+    textoTicket += "================================\n\n\n";
+
+    const base64Data = btoa(unescape(encodeURIComponent(textoTicket)));
+    const rawbtUrl = `intent://print?data=${base64Data}#Intent;scheme=rawbt;package=ru.a402st.rawbt;end;`;
+
+    window.location.href = rawbtUrl;
 }
 
 function limparHistorico() {
