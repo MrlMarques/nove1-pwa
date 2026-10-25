@@ -29,7 +29,6 @@
                     <option value="carro">Carro (R$4/h)</option>
                     <option value="carro_grande">Carro Grande (R$8/h)</option>
                 </select>
-                <!-- Truque pro placeholder no horário -->
                 <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
                 <button type="submit">Salvar Entrada</button>
             </form>
@@ -56,7 +55,10 @@
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
             <input type="text" id="hora-saida" placeholder="Horário de Saída" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
-            <input type="number" id="desconto" placeholder="Desconto (R$)" value="0">
+            
+            <!-- Campo de desconto atualizado sem o zero -->
+            <input type="number" id="desconto" placeholder="Aplicar desconto">
+            
             <select id="pagamento">
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
