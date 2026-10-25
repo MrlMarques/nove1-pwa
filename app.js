@@ -364,6 +364,7 @@ function gerarPDFDia() {
 
 // Função de Impressão Nativa otimizada para PWA no iOS (Ticket de Entrada)
 function imprimirTicketEntrada() {
+    alert("Teste do botão");
     const placa = document.getElementById('placa').value.toUpperCase();
     const tipoSelect = document.getElementById('tipo');
     const tipo = tipoSelect.value;
