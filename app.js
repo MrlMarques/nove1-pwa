@@ -362,7 +362,7 @@ function gerarPDFDia() {
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão via PDF Térmico otimizada para PWA no iOS
+// Função de Impressão via PDF Térmico com Iframe para iOS
 function imprimirTicketEntrada() {
     const placa = document.getElementById('placa').value.toUpperCase();
     const tipoSelect = document.getElementById('tipo');
@@ -377,7 +377,6 @@ function imprimirTicketEntrada() {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     const { jsPDF } = window.jspdf;
-    // Cria um PDF com dimensões customizadas para impressora térmica (58mm de largura)
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -414,14 +413,23 @@ function imprimirTicketEntrada() {
     y += 5;
     doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
-    // Abre o PDF em uma aba temporária para acionar o compartilhamento nativo do iOS
     const pdfDataUri = doc.output('datauristring');
-    const novaJanela = window.open();
-    if (novaJanela) {
-        novaJanela.document.write(`<iframe width='100%' height='100%' src='${pdfDataUri}' style='border:none;'></iframe>`);
-    } else {
-        doc.save(`ticket-${placa}.pdf`);
-    }
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    iframe.src = pdfDataUri;
+    document.body.appendChild(iframe);
+
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 1000);
+    }, 500);
 }
 
 function limparHistorico() {
