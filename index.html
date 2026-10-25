@@ -43,7 +43,7 @@
             <div id="lista-patio"></div>
         </section>
 
-        <!-- Aba de Histórico (Mantém o diário) -->
+        <!-- Aba de Histórico Diário -->
         <section id="historico" class="tab">
             <h2>Histórico por Data</h2>
             <input type="date" id="data-historico" onchange="atualizarHistorico()" style="margin-bottom: 15px;">
@@ -53,7 +53,7 @@
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px;">Limpar Histórico</button>
         </section>
 
-        <!-- Nova Aba de Relatórios por Período -->
+        <!-- Aba de Relatórios por Período -->
         <section id="relatorios" class="tab">
             <h2>Relatório por Período</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -84,6 +84,10 @@
             </select>
             <p>Total a pagar: R$ <span id="valor-calculado">0.00</span></p>
             <button onclick="calcularValor()">Calcular Valor</button>
+            
+            <!-- Botão de Impressão Térmica via RawBT -->
+            <button onclick="imprimirTicket()" class="btn-success" style="background-color: var(--accent-light); color: var(--bg-color);">Imprimir Ticket</button>
+            
             <button onclick="finalizarSaida()" class="btn-success">Finalizar e Receber</button>
             <button onclick="fecharModal()" class="btn-danger">Cancelar</button>
         </div>
