@@ -38,6 +38,7 @@ function showTab(tabId, btnElement) {
     }
 }
 
+// Botão padrão de salvar entrada manual
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.preventDefault();
     const placa = document.getElementById('placa').value.toUpperCase();
@@ -331,17 +332,32 @@ function gerarPDFDia() {
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão via Blob URL (Abre com botão de retorno/concluído no iOS)
+// Função de Impressão: Salva automaticamente no pátio e abre o PDF para o iOS
 function imprimirTicketEntrada() {
-    const placa = document.getElementById('placa').value.toUpperCase();
+    const placaInput = document.getElementById('placa');
     const tipoSelect = document.getElementById('tipo');
+    const horaEntradaInput = document.getElementById('hora-entrada');
+
+    const placa = placaInput.value.toUpperCase();
     const tipo = tipoSelect.value;
-    const horaEntrada = document.getElementById('hora-entrada').value;
+    const horaEntrada = horaEntradaInput.value;
 
     if (!placa || !tipo || !horaEntrada) {
         return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
     }
 
+    // 1. Salva automaticamente no Pátio (LocalStorage)
+    const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+    let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    patio.push(veiculo);
+    localStorage.setItem('nove1_patio', JSON.stringify(patio));
+
+    // Limpa o formulário e atualiza o pátio em segundo plano
+    document.getElementById('form-entrada').reset();
+    horaEntradaInput.type = 'text'; 
+    atualizarPatio();
+
+    // 2. Gera o Ticket em PDF via Blob URL
     let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
@@ -382,13 +398,11 @@ function imprimirTicketEntrada() {
     y += 5;
     doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
-    // Gera o Blob do PDF e abre em uma nova aba segura do navegador
     const pdfBlob = doc.output('blob');
     const blobUrl = URL.createObjectURL(pdfBlob);
     
     const novaJanela = window.open(blobUrl, '_blank');
     if (!novaJanela) {
-        // Fallback caso o navegador bloqueie o pop-up no PWA
         const link = document.createElement('a');
         link.href = blobUrl;
         link.target = '_blank';
