@@ -7,11 +7,11 @@
 }
 
 :root {
-    --bg-color: #0d0d0d; /* Fundo escurão pra dar contraste */
-    --text-color: #cecdce; /* O seu cinza claro */
-    --accent-light: #d8d622; /* Amarelo principal */
-    --accent-dark: #adac01; /* Amarelo escuro pro hover */
-    --border-color: #797c7b; /* Cinza escuro pros detalhes */
+    --bg-color: #0d0d0d; 
+    --text-color: #cecdce; 
+    --accent-light: #d8d622; 
+    --accent-dark: #adac01; 
+    --border-color: #797c7b; 
     --card-bg: #1a1a1a; 
 }
 
@@ -26,7 +26,6 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 
-/* Logo ajustada para preencher a largura total do cabeçalho */
 .logo-header {
     width: 100%;
     max-width: 100%;
@@ -44,7 +43,6 @@ nav {
     width: 100%;
 }
 
-/* Tamanho e estilo dos botões ajustados para 4 itens */
 nav button { 
     background: none; 
     border: 1px solid var(--accent-light); 
@@ -52,7 +50,7 @@ nav button {
     padding: 10px 2px; 
     cursor: pointer; 
     border-radius: 5px; 
-    font-size: 0.45em; /* Fonte ajustada para caber os 4 botões perfeitamente */
+    font-size: 0.45em; 
     flex: 1; 
     text-align: center;
 }
@@ -78,7 +76,6 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
 
 .card { background: var(--card-bg); padding: 15px; margin-bottom: 10px; border-left: 4px solid var(--accent-light); border-radius: 5px; display: flex; justify-content: space-between; align-items: center; border-right: 1px solid var(--border-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
 
-/* Modal boladão */
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
 .modal-content { background: var(--bg-color); padding: 20px; border: 2px solid var(--accent-light); border-radius: 10px; width: 90%; max-width: 400px; }
 
