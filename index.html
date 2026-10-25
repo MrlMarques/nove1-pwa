@@ -6,10 +6,11 @@
     <title>Nove1 - Estacionamento</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <!-- Biblioteca jsPDF para gerar o PDF direto no navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <header>
-        <!-- Garantindo que apenas a imagem apareça no topo -->
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
             <button onclick="showTab('entrada')">Entrada</button>
@@ -47,7 +48,10 @@
             <input type="date" id="data-historico" onchange="atualizarHistorico()" style="margin-bottom: 15px;">
             <div class="resumo-dia">Total: R$ <span id="total-dia">0.00</span></div>
             <div id="lista-historico"></div>
-            <button onclick="limparHistorico()" class="btn-danger">Limpar Histórico</button>
+            
+            <!-- Botão para gerar o PDF do dia -->
+            <button onclick="gerarPDFDia()" class="btn-success" style="margin-top: 15px;">Exportar Relatório PDF</button>
+            <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px;">Limpar Histórico</button>
         </section>
     </main>
 
