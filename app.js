@@ -6,7 +6,6 @@ const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
 let veiculoAtual = null;
 let editandoId = null;
 
-// Inicializa as datas de hoje ao abrir o app
 document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
     document.getElementById('data-historico').valueAsDate = hoje;
@@ -18,7 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
     calcularRelatorioPeriodo();
 });
 
-// Máscara da placa: põe o traço automático e deixa tudo maiúsculo
 document.getElementById('placa').addEventListener('input', function(e) {
     let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
     if (val.length > 3) {
@@ -27,7 +25,6 @@ document.getElementById('placa').addEventListener('input', function(e) {
     this.value = val;
 });
 
-// Função de navegação entre abas
 function showTab(tabId, btnElement) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -42,7 +39,6 @@ function showTab(tabId, btnElement) {
     }
 }
 
-// Botão de salvar entrada manual (ou salvar edição)
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.preventDefault();
     const placa = document.getElementById('placa').value.toUpperCase();
@@ -75,7 +71,6 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     showTab('patio', patioBtn);
 });
 
-// Pátio reestruturado: Placa em cima, botões coloridos embaixo
 function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
@@ -94,9 +89,9 @@ function atualizarPatio() {
                     <small style="color: #aaa;">Entrada: ${v.horaEntrada}</small>
                 </div>
                 <div style="display: flex; gap: 6px; border-top: 1px solid #333; padding-top: 10px;">
-                    <button onclick="abrirSaida(${v.id})" style="flex: 1; background: var(--accent-light); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.8em; cursor: pointer;">SAÍDA</button>
-                    <button onclick="editarPatio(${v.id})" style="flex: 1; background: var(--edit-color); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.8em; cursor: pointer;">EDITAR</button>
-                    <button onclick="excluirPatio(${v.id})" style="flex: 1; background: var(--danger-color); color: white; border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.8em; cursor: pointer;">EXCLUIR</button>
+                    <button onclick="abrirSaida(${v.id})" style="flex: 1; background: var(--accent-light); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">SAÍDA</button>
+                    <button onclick="editarPatio(${v.id})" style="flex: 1; background: var(--edit-color); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">EDITAR</button>
+                    <button onclick="excluirPatio(${v.id})" style="flex: 1; background: var(--danger-color); color: white; border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">EXCLUIR</button>
                 </div>
             </div>
         `;
