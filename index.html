@@ -21,7 +21,7 @@
     </header>
 
     <main>
-        <!-- Aba de Entrada -->
+        <!-- Aba de Entrada com botão de Imprimir Ticket de Entrada -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
@@ -33,7 +33,9 @@
                     <option value="carro_grande">Carro Grande (R$8/h)</option>
                 </select>
                 <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
+                
                 <button type="submit">Salvar Entrada</button>
+                <button type="button" onclick="imprimirTicketEntrada()" class="btn-success" style="background-color: var(--accent-light); color: var(--bg-color);">Imprimir Ticket de Entrada</button>
             </form>
         </section>
 
@@ -71,7 +73,7 @@
         </section>
     </main>
 
-    <!-- Modal de Saída -->
+    <!-- Modal de Saída (Limpo, sem o botão de impressão) -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
@@ -84,10 +86,6 @@
             </select>
             <p>Total a pagar: R$ <span id="valor-calculado">0.00</span></p>
             <button onclick="calcularValor()">Calcular Valor</button>
-            
-            <!-- Botão de Impressão Térmica via RawBT -->
-            <button onclick="imprimirTicket()" class="btn-success" style="background-color: var(--accent-light); color: var(--bg-color);">Imprimir Ticket</button>
-            
             <button onclick="finalizarSaida()" class="btn-success">Finalizar e Receber</button>
             <button onclick="fecharModal()" class="btn-danger">Cancelar</button>
         </div>
