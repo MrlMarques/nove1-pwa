@@ -26,15 +26,15 @@ document.getElementById('placa').addEventListener('input', function(e) {
     this.value = val;
 });
 
-// Função ajustada para alternar as abas e destacar o botão ativo no menu
-function showTab(tabId) {
+// Função de navegação blindada para PWA e iOS
+function showTab(tabId, btnElement) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     
     document.getElementById(tabId).classList.add('active');
     
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
+    if (btnElement) {
+        btnElement.classList.add('active');
     }
 }
 
@@ -53,7 +53,10 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.target.reset();
     document.getElementById('hora-entrada').type = 'text'; 
     atualizarPatio();
-    showTab('patio');
+    
+    // Força ir para a aba de Pátio acendendo o botão correspondente
+    const patioBtn = document.querySelectorAll('nav button')[1];
+    showTab('patio', patioBtn);
 });
 
 function atualizarPatio() {
@@ -139,7 +142,10 @@ function finalizarSaida() {
     atualizarPatio();
     atualizarHistorico();
     calcularRelatorioPeriodo();
-    showTab('historico');
+    
+    // Força ir para a aba de Histórico acendendo o botão correspondente
+    const historicoBtn = document.querySelectorAll('nav button')[2];
+    showTab('historico', historicoBtn);
 }
 
 function atualizarHistorico() {
@@ -294,4 +300,148 @@ function gerarPDFDia() {
 
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
-    if (!dataInput) return alert("Selecione uma data para exportar o relatório
+    if (!dataInput) return alert("Selecione uma data para exportar o relatório!");
+    
+    const [ano, mes, dia] = dataInput.split('-');
+    const dataFiltro = `${dia}/${mes}/${ano}`;
+
+    const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
+
+    if (veiculosDoDia.length === 0) {
+        return alert("Não há registros para exportar nesta data, parceiro!");
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatorio de Fechamento de Caixa - Data: ${dataFiltro}`, 14, 28);
+
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    let y = 42;
+    let totalGeral = 0;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Placa", 14, y);
+    doc.text("Tipo", 50, y);
+    doc.text("Horario", 90, y);
+    doc.text("Pgto", 130, y);
+    doc.text("Valor", 170, y);
+
+    y += 6;
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    veiculosDoDia.forEach(v => {
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
+        }
+        totalGeral += v.valorPago;
+        doc.text(v.placa, 14, y);
+        doc.text(v.tipo.replace('_', ' '), 50, y);
+        doc.text(`${v.horaEntrada} - ${v.horaSaida}`, 90, y);
+        doc.text(v.pagamento.toUpperCase(), 130, y);
+        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 170, y);
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(14, y, 196, y);
+    y += 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
+}
+
+// Função de Impressão Nativa otimizada para PWA no iOS (Ticket de Entrada)
+function imprimirTicketEntrada() {
+    const placa = document.getElementById('placa').value.toUpperCase();
+    const tipoSelect = document.getElementById('tipo');
+    const tipo = tipoSelect.value;
+    const horaEntrada = document.getElementById('hora-entrada').value;
+
+    if (!placa || !tipo || !horaEntrada) {
+        return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
+    }
+
+    let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
+    const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+    const antigoPrint = document.getElementById('print-area-temp');
+    if (antigoPrint) antigoPrint.remove();
+
+    const divPrint = document.createElement('div');
+    divPrint.id = 'print-area-temp';
+    divPrint.innerHTML = `
+        <div class="ticket-recibo">
+            <h3>NOVE1 ESTETICA</h3>
+            <p>AUTOMOTIVA</p>
+            <hr>
+            <p><strong>COMPROVANTE DE ENTRADA</strong></p>
+            <div class="dados">
+                Data: ${dataHoje}<br>
+                Placa: <strong>${placa}</strong><br>
+                Tipo: ${tipoFormatado}<br>
+                Entrada: ${horaEntrada}
+            </div>
+            <hr>
+            <p>Conserve este ticket para a retirada do seu veiculo.</p>
+            <p>Obrigado pela preferencia!</p>
+        </div>
+    `;
+
+    const stylePrint = document.createElement('style');
+    stylePrint.id = 'style-print-temp';
+    stylePrint.innerHTML = `
+        @media screen {
+            #print-area-temp { display: none; }
+        }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area-temp, #print-area-temp * { visibility: visible; }
+            #print-area-temp {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 250px;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+                color: #000;
+                background: #fff;
+                padding: 5px;
+                text-align: center;
+            }
+            .ticket-recibo h3 { margin: 5px 0; font-size: 14px; }
+            .ticket-recibo hr { border: dashed 1px #000; margin: 5px 0; }
+            .ticket-recibo .dados { text-align: left; margin: 10px 0; }
+        }
+    `;
+
+    document.body.appendChild(divPrint);
+    document.body.appendChild(stylePrint);
+
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            divPrint.remove();
+            stylePrint.remove();
+        }, 1000);
+    }, 300);
+}
+
+function limparHistorico() {
+    if(confirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!")) {
+        localStorage.removeItem('nove1_historico');
+        atualizarHistorico();
+        calcularRelatorioPeriodo();
+    }
+}
