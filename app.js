@@ -349,31 +349,33 @@ function gerarPDFDia() {
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão Térmica via RawBT
-function imprimirTicket() {
-    if (!veiculoAtual) return alert("Nenhum veículo selecionado, parceiro!");
-    
-    const horaSaida = document.getElementById('hora-saida').value;
-    if (!horaSaida) return alert("Calcula ou bota a hora de saída antes de imprimir!");
+// Função de Impressão Térmica do Ticket de ENTRADA via RawBT
+function imprimirTicketEntrada() {
+    const placa = document.getElementById('placa').value.toUpperCase();
+    const tipoSelect = document.getElementById('tipo');
+    const tipo = tipoSelect.value;
+    const horaEntrada = document.getElementById('hora-entrada').value;
 
-    const desconto = Number(document.getElementById('desconto').value) || 0;
-    const pagamento = document.getElementById('pagamento').value.toUpperCase();
-    const valorCalculado = document.getElementById('valor-calculado').innerText;
+    if (!placa || !tipo || !horaEntrada) {
+        return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
+    }
+
+    let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
+    const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     let textoTicket = "";
     textoTicket += "================================\n";
     textoTicket += "    NOVE1 ESTETICA AUTOMOTIVA   \n";
     textoTicket += "================================\n";
-    textoTicket += `PLACA: ${veiculoAtual.placa}\n`;
-    textoTicket += `TIPO: ${veiculoAtual.tipo.toUpperCase().replace('_', ' ')}\n`;
-    textoTicket += `ENTRADA: ${veiculoAtual.horaEntrada}\n`;
-    textoTicket += `SAIDA: ${horaSaida}\n`;
-    if (desconto > 0) {
-        textoTicket += `DESCONTO: R$ ${desconto.toFixed(2)}\n`;
-    }
-    textoTicket += `PAGAMENTO: ${pagamento}\n`;
+    textoTicket += "       COMPROVANTE DE ENTRADA   \n";
     textoTicket += "--------------------------------\n";
-    textoTicket += `TOTAL PAGO: R$ ${valorCalculado}\n`;
+    textoTicket += `DATA: ${dataHoje}\n`;
+    textoTicket += `PLACA: ${placa}\n`;
+    textoTicket += `TIPO: ${tipoFormatado}\n`;
+    textoTicket += `ENTRADA: ${horaEntrada}\n`;
+    textoTicket += "--------------------------------\n";
+    textoTicket += "Conserve este ticket para a\n";
+    textoTicket += "retirada do seu veiculo.\n";
     textoTicket += "================================\n";
     textoTicket += "     OBRIGADO PELA PREFERENCIA  \n";
     textoTicket += "================================\n\n\n";
