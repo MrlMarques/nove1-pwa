@@ -71,12 +71,22 @@ function calcularValor() {
     const [hEnt, mEnt] = veiculoAtual.horaEntrada.split(':').map(Number);
     const [hSai, mSai] = horaSaida.split(':').map(Number);
     
-    let diffHoras = (hSai + mSai/60) - (hEnt + mEnt/60);
-    if(diffHoras < 0) diffHoras += 24; 
-    if(diffHoras < 1) diffHoras = 1; 
+    // Calcula o tempo total em minutos pra ficar exato
+    let totalMinutos = (hSai * 60 + mSai) - (hEnt * 60 + mEnt);
+    if (totalMinutos < 0) totalMinutos += 24 * 60; // Se o cara virar a noite no pátio
+
+    let horasCobradas = Math.floor(totalMinutos / 60);
+    let minutosRestantes = totalMinutos % 60;
+
+    // Regra da hora cheia com tolerância de 5 minutos
+    if (horasCobradas === 0) {
+        horasCobradas = 1; // Ficou menos de 1 hora, paga o mínimo (1 hora)
+    } else if (minutosRestantes > 5) {
+        horasCobradas += 1; // Passou dos 5 minutos de tolerância, cobra a próxima hora cheia
+    }
 
     const desconto = Number(document.getElementById('desconto').value) || 0;
-    let total = (diffHoras * taxas[veiculoAtual.tipo]) - desconto;
+    let total = (horasCobradas * taxas[veiculoAtual.tipo]) - desconto;
     if (total < 0) total = 0;
 
     document.getElementById('valor-calculado').innerText = total.toFixed(2);
