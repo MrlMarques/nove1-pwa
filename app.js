@@ -362,9 +362,8 @@ function gerarPDFDia() {
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão Nativa otimizada para PWA no iOS (Ticket de Entrada)
+// Função de Impressão via PDF Térmico otimizada para PWA no iOS
 function imprimirTicketEntrada() {
-    alert("Teste do botão");
     const placa = document.getElementById('placa').value.toUpperCase();
     const tipoSelect = document.getElementById('tipo');
     const tipo = tipoSelect.value;
@@ -377,66 +376,52 @@ function imprimirTicketEntrada() {
     let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
-    const antigoPrint = document.getElementById('print-area-temp');
-    if (antigoPrint) antigoPrint.remove();
+    const { jsPDF } = window.jspdf;
+    // Cria um PDF com dimensões customizadas para impressora térmica (58mm de largura)
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, 100]
+    });
 
-    const divPrint = document.createElement('div');
-    divPrint.id = 'print-area-temp';
-    divPrint.innerHTML = `
-        <div class="ticket-recibo">
-            <h3>NOVE1 ESTETICA</h3>
-            <p>AUTOMOTIVA</p>
-            <hr>
-            <p><strong>COMPROVANTE DE ENTRADA</strong></p>
-            <div class="dados">
-                Data: ${dataHoje}<br>
-                Placa: <strong>${placa}</strong><br>
-                Tipo: ${tipoFormatado}<br>
-                Entrada: ${horaEntrada}
-            </div>
-            <hr>
-            <p>Conserve este ticket para a retirada do seu veiculo.</p>
-            <p>Obrigado pela preferencia!</p>
-        </div>
-    `;
+    doc.setFont("courier", "bold");
+    doc.setFontSize(9);
+    doc.text("NOVE1 ESTETICA", 29, 6, { align: "center" });
+    doc.setFontSize(7);
+    doc.text("AUTOMOTIVA", 29, 10, { align: "center" });
+    
+    doc.text("--------------------------------", 29, 14, { align: "center" });
+    doc.text("COMPROVANTE DE ENTRADA", 29, 18, { align: "center" });
+    doc.text("--------------------------------", 29, 22, { align: "center" });
 
-    const stylePrint = document.createElement('style');
-    stylePrint.id = 'style-print-temp';
-    stylePrint.innerHTML = `
-        @media screen {
-            #print-area-temp { display: none; }
-        }
-        @media print {
-            body * { visibility: hidden; }
-            #print-area-temp, #print-area-temp * { visibility: visible; }
-            #print-area-temp {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 250px;
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                color: #000;
-                background: #fff;
-                padding: 5px;
-                text-align: center;
-            }
-            .ticket-recibo h3 { margin: 5px 0; font-size: 14px; }
-            .ticket-recibo hr { border: dashed 1px #000; margin: 5px 0; }
-            .ticket-recibo .dados { text-align: left; margin: 10px 0; }
-        }
-    `;
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8);
+    let y = 28;
+    doc.text(`Data: ${dataHoje}`, 3, y);
+    y += 5;
+    doc.text(`Placa: ${placa}`, 3, y);
+    y += 5;
+    doc.text(`Tipo: ${tipoFormatado}`, 3, y);
+    y += 5;
+    doc.text(`Entrada: ${horaEntrada}`, 3, y);
+    
+    y += 7;
+    doc.text("--------------------------------", 29, y, { align: "center" });
+    y += 5;
+    doc.text("Conserve este ticket", 29, y, { align: "center" });
+    y += 4;
+    doc.text("para a retirada.", 29, y, { align: "center" });
+    y += 5;
+    doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
-    document.body.appendChild(divPrint);
-    document.body.appendChild(stylePrint);
-
-    setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-            divPrint.remove();
-            stylePrint.remove();
-        }, 1000);
-    }, 300);
+    // Abre o PDF em uma aba temporária para acionar o compartilhamento nativo do iOS
+    const pdfDataUri = doc.output('datauristring');
+    const novaJanela = window.open();
+    if (novaJanela) {
+        novaJanela.document.write(`<iframe width='100%' height='100%' src='${pdfDataUri}' style='border:none;'></iframe>`);
+    } else {
+        doc.save(`ticket-${placa}.pdf`);
+    }
 }
 
 function limparHistorico() {
