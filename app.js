@@ -4,6 +4,7 @@ if ('serviceWorker' in navigator) {
 
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
 let veiculoAtual = null;
+let editandoId = null; // Variável de controle para saber se estamos editando um carro do pátio
 
 // Inicializa as datas de hoje ao abrir o app
 document.addEventListener("DOMContentLoaded", () => {
@@ -38,17 +39,31 @@ function showTab(tabId, btnElement) {
     }
 }
 
-// Botão padrão de salvar entrada manual
+// Botão de salvar entrada manual (ou salvar edição)
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.preventDefault();
     const placa = document.getElementById('placa').value.toUpperCase();
     const tipo = document.getElementById('tipo').value;
     const horaEntrada = document.getElementById('hora-entrada').value;
 
-    const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
-    
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    patio.push(veiculo);
+
+    if (editandoId) {
+        // Se estiver editando, atualiza os dados do veículo existente
+        patio = patio.map(v => {
+            if (v.id === editandoId) {
+                return { ...v, placa, tipo, horaEntrada };
+            }
+            return v;
+        });
+        editandoId = null;
+        document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
+    } else {
+        // Se for um novo registro normal
+        const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+        patio.push(veiculo);
+    }
+
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     e.target.reset();
@@ -59,7 +74,7 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     showTab('patio', patioBtn);
 });
 
-// Atualiza a listagem do pátio com o botão de Dar Saída e o de Excluir
+// Atualiza a listagem do pátio com os botões de Saída, Editar e Excluir
 function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
@@ -77,13 +92,35 @@ function atualizarPatio() {
                     <strong>${v.placa}</strong> - ${v.tipo.replace('_', ' ')} <br>
                     <small>Entrada: ${v.horaEntrada}</small>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="abrirSaida(${v.id})">Dar Saída</button>
-                    <button onclick="excluirPatio(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer;">Excluir</button>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="abrirSaida(${v.id})" style="padding: 6px 8px;">Saída</button>
+                    <button onclick="editarPatio(${v.id})" style="background-color: #f0ad4e; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer;">Editar</button>
+                    <button onclick="excluirPatio(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer;">Excluir</button>
                 </div>
             </div>
         `;
     });
+}
+
+// Função para carregar os dados do carro de volta ao formulário para edição
+function editarPatio(id) {
+    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    const veiculo = patio.find(v => v.id === id);
+    if (!veiculo) return;
+
+    document.getElementById('placa').value = veiculo.placa;
+    document.getElementById('tipo').value = veiculo.tipo;
+    
+    const inputHora = document.getElementById('hora-entrada');
+    inputHora.type = 'time';
+    inputHora.value = veiculo.horaEntrada;
+
+    editandoId = id; // Marca o ID que está sendo editado
+    document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Edição";
+
+    // Retorna para a aba de entrada para o usuário ajustar
+    const entradaBtn = document.querySelectorAll('nav button')[0];
+    showTab('entrada', entradaBtn);
 }
 
 // Função para excluir um veículo direto do Pátio
@@ -203,7 +240,6 @@ function atualizarHistorico() {
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
 }
 
-// Função para excluir um item específico do histórico
 function excluirHistorico(id) {
     if (confirm("Tem certeza que quer apagar este registro do histórico?")) {
         let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
@@ -386,9 +422,23 @@ function imprimirTicketEntrada() {
         return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
     }
 
-    const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    patio.push(veiculo);
+
+    if (editandoId) {
+        // Se estiver editando pela tela de entrada ao invés de salvar novo
+        patio = patio.map(v => {
+            if (v.id === editandoId) {
+                return { ...v, placa, tipo, horaEntrada };
+            }
+            return v;
+        });
+        editandoId = null;
+        document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
+    } else {
+        const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+        patio.push(veiculo);
+    }
+
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     document.getElementById('form-entrada').reset();
