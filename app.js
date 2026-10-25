@@ -26,9 +26,16 @@ document.getElementById('placa').addEventListener('input', function(e) {
     this.value = val;
 });
 
+// Função ajustada para alternar as abas e destacar o botão ativo no menu
 function showTab(tabId) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    
     document.getElementById(tabId).classList.add('active');
+    
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
 }
 
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
@@ -58,7 +65,7 @@ function atualizarPatio() {
         lista.innerHTML += `
             <div class="card" onclick="abrirSaida(${v.id})">
                 <div>
-                    <strong>${v.placa}</strong> -${v.tipo.replace('_', ' ')} <br>
+                    <strong>${v.placa}</strong> - ${v.tipo.replace('_', ' ')} <br>
                     <small>Entrada: ${v.horaEntrada}</small>
                 </div>
                 <button>Dar Saída</button>
@@ -217,7 +224,11 @@ function gerarPDFPeriodo() {
 
     const [anoI, mesI, diaI] = inicioStr.split('-');
     const [anoF, mesF, diaF] = fimStr.split('-');
-    const periodoFormatado = `${diaI}/${mesI}/${anoI} até ${diaF}/${mesF}/${anoF}`;  const filtrados = historico.filter(v => { const [d, m, a] = v.data.split('/'); const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
+    const periodoFormatado = `${diaI}/${mesI}/${anoI} até ${diaF}/${mesF}/${anoF}`;
+
+    const filtrados = historico.filter(v => {
+        const [d, m, a] = v.data.split('/');
+        const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
         return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
     });
 
@@ -271,7 +282,22 @@ function gerarPDFPeriodo() {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);  doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`); }  // Gerar PDF do Dia function gerarPDFDia() { const { jsPDF } = window.jspdf; const doc = new jsPDF();  const historico = JSON.parse(localStorage.getItem('nove1_historico')) \vert{}\vert{} []; const dataInput = document.getElementById('data-historico').value; if (!dataInput) return alert("Selecione uma data para exportar o relatório!");  const [ano, mes, dia] = dataInput.split('-'); const dataFiltro = `${dia}/${mes}/${ano}`;
+    doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
+}
+
+// Gerar PDF do Dia
+function gerarPDFDia() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const dataInput = document.getElementById('data-historico').value;
+    if (!dataInput) return alert("Selecione uma data para exportar o relatório!");
+    
+    const [ano, mes, dia] = dataInput.split('-');
+    const dataFiltro = `${dia}/${mes}/${ano}`;
 
     const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
 
@@ -313,7 +339,7 @@ function gerarPDFPeriodo() {
         totalGeral += v.valorPago;
         doc.text(v.placa, 14, y);
         doc.text(v.tipo.replace('_', ' '), 50, y);
-        doc.text(`${v.horaEntrada} -${v.horaSaida}`, 90, y);
+        doc.text(`${v.horaEntrada} - ${v.horaSaida}`, 90, y);
         doc.text(v.pagamento.toUpperCase(), 130, y);
         doc.text(`R$ ${v.valorPago.toFixed(2)}`, 170, y);
         y += 8;
@@ -325,7 +351,9 @@ function gerarPDFPeriodo() {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);  doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
+    doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
 // Função de Impressão Nativa para iOS (Ticket de Entrada)
@@ -350,4 +378,52 @@ function imprimirTicketEntrada() {
             <title>Ticket de Entrada</title>
             <style>
                 body {
-                    font-family: 'Courier New', Courier
+                    font-family: 'Courier New', Courier, monospace;
+                    font-size: 12px;
+                    width: 250px;
+                    margin: 0;
+                    padding: 10px;
+                    color: #000;
+                    background: #fff;
+                    text-align: center;
+                }
+                h3 { margin: 5px 0; font-size: 14px; }
+                hr { border: dashed 1px #000; margin: 5px 0; }
+                .dados { text-align: left; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <h3>NOVE1 ESTETICA</h3>
+            <p>AUTOMOTIVA</p>
+            <hr>
+            <p><strong>COMPROVANTE DE ENTRADA</strong></p>
+            <div class="dados">
+                Data: ${dataHoje}<br>
+                Placa: <strong>${placa}</strong><br>
+                Tipo: ${tipoFormatado}<br>
+                Entrada: ${horaEntrada}
+            </div>
+            <hr>
+            <p>Conserve este ticket para a retirada do seu veiculo.</p>
+            <p>Obrigado pela preferencia!</p>
+        </body>
+        </html>
+    `;
+
+    janelaImpressao.document.write(conteudoHTML);
+    janelaImpressao.document.close();
+    
+    setTimeout(() => {
+        janelaImpressao.focus();
+        janelaImpressao.print();
+        janelaImpressao.close();
+    }, 500);
+}
+
+function limparHistorico() {
+    if(confirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!")) {
+        localStorage.removeItem('nove1_historico');
+        atualizarHistorico();
+        calcularRelatorioPeriodo();
+    }
+}
