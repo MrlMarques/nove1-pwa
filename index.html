@@ -3,88 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nove1 - Estacionamento</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <!-- Biblioteca jsPDF -->
+    <title>Nove1 - Estética Automotiva</title>
+    <link rel="stylesheet" href="estilo.css">
+    <!-- Biblioteca jsPDF para geração de tickets e relatórios -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+
     <header>
-        <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
+        <img src="imagem_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
-            <button onclick="showTab('entrada', this)" class="tab-btn active">Entrada</button>
-            <button onclick="showTab('patio', this)" class="tab-btn">Pátio</button>
-            <button onclick="showTab('historico', this)" class="tab-btn">Histórico</button>
-            <button onclick="showTab('relatorios', this)" class="tab-btn">Relatórios</button>
+            <button onclick="showTab('entrada', this)" class="active">ENTRADA</button>
+            <button onclick="showTab('patio', this)">PÁTIO</button>
+            <button onclick="showTab('historico', this)">HISTÓRICO</button>
+            <button onclick="showTab('relatorios', this)">RELATÓRIOS</button>
         </nav>
     </header>
 
     <main>
-        <!-- Aba de Entrada -->
+        <!-- ABA ENTRADA -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
-                <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" maxlength="8" required>
+                <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" required autocomplete="off">
                 <select id="tipo" required>
                     <option value="" disabled selected>Tipo de Veículo</option>
-                    <option value="moto">Moto (R$2/h)</option>
-                    <option value="carro">Carro (R$4/h)</option>
-                    <option value="carro_grande">Carro Grande (R$8/h)</option>
+                    <option value="moto">Moto (R$ 2,00/h)</option>
+                    <option value="carro">Carro (R$ 4,00/h)</option>
+                    <option value="carro_grande">Carro Grande (R$ 8,00/h)</option>
                 </select>
-                <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
-                
-                <button type="submit">Salvar Entrada</button>
-                <button type="button" onclick="imprimirTicketEntrada()" class="btn-success" style="background-color: var(--accent-light); color: var(--bg-color);">Imprimir Ticket de Entrada</button>
+                <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="this.type='time'; this.value = new Date().toTimeString().substring(0,5);" required>
+                <button type="submit" class="btn-success">Salvar Entrada</button>
+                <button type="button" onclick="imprimirTicketEntrada()">Imprimir Ticket de Entrada</button>
             </form>
         </section>
 
-        <!-- Aba de Pátio -->
+        <!-- ABA PÁTIO -->
         <section id="patio" class="tab">
             <h2>Veículos no Pátio</h2>
             <div id="lista-patio"></div>
         </section>
 
-        <!-- Aba de Histórico Diário -->
+        <!-- ABA HISTÓRICO -->
         <section id="historico" class="tab">
             <h2>Histórico por Data</h2>
-            <input type="date" id="data-historico" onchange="atualizarHistorico()" style="margin-bottom: 15px;">
-            <div class="resumo-dia">Total: R$ <span id="total-dia">0.00</span></div>
-            <div id="lista-historico"></div>
-            <button onclick="gerarPDFDia()" class="btn-success" style="margin-top: 15px;">Exportar Relatório PDF</button>
-            <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px;">Limpar Histórico</button>
+            <input type="date" id="data-historico" onchange="atualizarHistorico()">
+            <div class="resumo-dia" style="margin-top: 15px;">TOTAL: R$ <span id="total-dia">0.00</span></div>
+            <div id="lista-historico" style="margin-top: 15px;"></div>
+            <button onclick="gerarPDFDia()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Relatório PDF</button>
+            <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico</button>
         </section>
 
-        <!-- Aba de Relatórios por Período -->
+        <!-- ABA RELATÓRIOS -->
         <section id="relatorios" class="tab">
             <h2>Relatório por Período</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
-                <label style="color: var(--accent-light); font-size: 0.9em;">Data Inicial:</label>
+                <label>Data Inicial:</label>
                 <input type="date" id="data-inicio" onchange="calcularRelatorioPeriodo()">
-                
-                <label style="color: var(--accent-light); font-size: 0.9em;">Data Final:</label>
+                <label>Data Final:</label>
                 <input type="date" id="data-fim" onchange="calcularRelatorioPeriodo()">
             </div>
-
-            <div class="resumo-dia">Total do Período: R$ <span id="total-periodo">0.00</span></div>
-            <div id="lista-periodo"></div>
-            
-            <button onclick="gerarPDFPeriodo()" class="btn-success" style="margin-top: 15px;">Exportar Período em PDF</button>
+            <div class="resumo-dia">TOTAL DO PERÍODO: R$ <span id="total-periodo">0.00</span></div>
+            <div id="lista-periodo" style="margin-top: 15px;"></div>
+            <button onclick="gerarPDFPeriodo()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Período em PDF</button>
         </section>
     </main>
 
-    <!-- Modal de Saída -->
+    <!-- MODAL DE SAÍDA -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
-            <input type="text" id="hora-saida" placeholder="Horário de Saída" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
-            <input type="number" id="desconto" placeholder="Aplicar desconto">
+            <input type="time" id="hora-saida">
+            <input type="number" id="desconto" placeholder="Aplicar desconto (R$)" step="0.50">
             <select id="pagamento">
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 <option value="dinheiro">Dinheiro</option>
             </select>
-            <p>Total a pagar: R$ <span id="valor-calculado">0.00</span></p>
+            <div class="resumo-dia" style="font-size: 1em; margin: 0;">Total a pagar: R$ <span id="valor-calculado">0.00</span></div>
             <button onclick="calcularValor()">Calcular Valor</button>
             <button onclick="finalizarSaida()" class="btn-success">Finalizar e Receber</button>
             <button onclick="fecharModal()" class="btn-danger">Cancelar</button>
