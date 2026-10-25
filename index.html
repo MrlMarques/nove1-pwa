@@ -22,14 +22,15 @@
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
-                <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" required uppercase>
+                <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" maxlength="8" required>
                 <select id="tipo" required>
                     <option value="" disabled selected>Tipo de Veículo</option>
                     <option value="moto">Moto (R$2/h)</option>
                     <option value="carro">Carro (R$4/h)</option>
                     <option value="carro_grande">Carro Grande (R$8/h)</option>
                 </select>
-                <input type="time" id="hora-entrada" required>
+                <!-- Truque pro placeholder no horário -->
+                <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
                 <button type="submit">Salvar Entrada</button>
             </form>
         </section>
@@ -42,7 +43,8 @@
 
         <!-- Aba de Histórico -->
         <section id="historico" class="tab">
-            <h2>Histórico do Dia</h2>
+            <h2>Histórico por Data</h2>
+            <input type="date" id="data-historico" onchange="atualizarHistorico()" style="margin-bottom: 15px;">
             <div class="resumo-dia">Total: R$ <span id="total-dia">0.00</span></div>
             <div id="lista-historico"></div>
             <button onclick="limparHistorico()" class="btn-danger">Limpar Histórico</button>
@@ -53,7 +55,7 @@
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
-            <input type="time" id="hora-saida" required>
+            <input type="text" id="hora-saida" placeholder="Horário de Saída" onfocus="(this.type='time')" onblur="(this.type= this.value ? 'time' : 'text')" required>
             <input type="number" id="desconto" placeholder="Desconto (R$)" value="0">
             <select id="pagamento">
                 <option value="pix">PIX</option>
