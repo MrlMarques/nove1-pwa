@@ -4,7 +4,7 @@ if ('serviceWorker' in navigator) {
 
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
 let veiculoAtual = null;
-let editandoId = null; // Variável de controle para saber se estamos editando um carro do pátio
+let editandoId = null;
 
 // Inicializa as datas de hoje ao abrir o app
 document.addEventListener("DOMContentLoaded", () => {
@@ -49,7 +49,6 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
 
     if (editandoId) {
-        // Se estiver editando, atualiza os dados do veículo existente
         patio = patio.map(v => {
             if (v.id === editandoId) {
                 return { ...v, placa, tipo, horaEntrada };
@@ -59,7 +58,6 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
         editandoId = null;
         document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
     } else {
-        // Se for um novo registro normal
         const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
         patio.push(veiculo);
     }
@@ -74,7 +72,7 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     showTab('patio', patioBtn);
 });
 
-// Atualiza a listagem do pátio com os botões de Saída, Editar e Excluir
+// Pátio reestruturado: Placa em cima, botões compactos embaixo
 function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
@@ -87,22 +85,21 @@ function atualizarPatio() {
 
     patio.forEach(v => {
         lista.innerHTML += `
-            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="flex-grow: 1; cursor: pointer;" onclick="abrirSaida(${v.id})">
-                    <strong>${v.placa}</strong> - ${v.tipo.replace('_', ' ')} <br>
-                    <small>Entrada: ${v.horaEntrada}</small>
+            <div class="card">
+                <div>
+                    <strong style="font-size: 1.1em; color: var(--accent-light);">${v.placa}</strong> — <span style="text-transform: capitalize;">${v.tipo.replace('_', ' ')}</span><br>
+                    <small style="color: #aaa;">Entrada: ${v.horaEntrada}</small>
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <button onclick="abrirSaida(${v.id})" style="padding: 6px 8px;">Saída</button>
-                    <button onclick="editarPatio(${v.id})" style="background-color: #f0ad4e; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer;">Editar</button>
-                    <button onclick="excluirPatio(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer;">Excluir</button>
+                <div style="display: flex; gap: 6px; border-top: 1px solid #222; padding-top: 8px;">
+                    <button onclick="abrirSaida(${v.id})" style="flex: 1; background: var(--accent-color); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.85em; cursor: pointer;">SAÍDA</button>
+                    <button onclick="editarPatio(${v.id})" style="flex: 1; background: var(--edit-color); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.85em; cursor: pointer;">EDITAR</button>
+                    <button onclick="excluirPatio(${v.id})" style="flex: 1; background: var(--danger-color); color: white; border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.85em; cursor: pointer;">EXCLUIR</button>
                 </div>
             </div>
         `;
     });
 }
 
-// Função para carregar os dados do carro de volta ao formulário para edição
 function editarPatio(id) {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const veiculo = patio.find(v => v.id === id);
@@ -115,15 +112,13 @@ function editarPatio(id) {
     inputHora.type = 'time';
     inputHora.value = veiculo.horaEntrada;
 
-    editandoId = id; // Marca o ID que está sendo editado
+    editandoId = id;
     document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Edição";
 
-    // Retorna para a aba de entrada para o usuário ajustar
     const entradaBtn = document.querySelectorAll('nav button')[0];
     showTab('entrada', entradaBtn);
 }
 
-// Função para excluir um veículo direto do Pátio
 function excluirPatio(id) {
     if (confirm("Certeza que deseja remover este veículo do pátio, parceiro?")) {
         let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
@@ -146,7 +141,6 @@ function fecharModal() {
     veiculoAtual = null;
 }
 
-// Calculo atualizado: cobra por hora cheia, tolerância de 5 min
 function calcularValor() {
     if(!veiculoAtual) return;
     const horaSaida = document.getElementById('hora-saida').value;
@@ -203,7 +197,6 @@ function finalizarSaida() {
     showTab('historico', historicoBtn);
 }
 
-// Atualiza o histórico diário com botão de excluir individual
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
@@ -224,14 +217,14 @@ function atualizarHistorico() {
     filtrados.forEach(v => {
         totalDia += v.valorPago;
         lista.innerHTML += `
-            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>${v.placa}</strong> (${v.pagamento})<br>
-                    <small>${v.horaEntrada} às ${v.horaSaida}</small>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
+                    <small style="color: #aaa;">${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <strong>R$ ${v.valorPago.toFixed(2)}</strong>
-                    <button onclick="excluirHistorico(${v.id})" class="btn-danger" style="background-color: #d9534f; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">X</button>
+                    <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
+                    <button onclick="excluirHistorico(${v.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">X</button>
                 </div>
             </div>
         `;
@@ -274,12 +267,12 @@ function calcularRelatorioPeriodo() {
     filtrados.forEach(v => {
         totalPeriodo += v.valorPago;
         lista.innerHTML += `
-            <div class="card">
+            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>${v.placa}</strong> (${v.pagamento})<br>
-                    <small>${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
+                    <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
-                <strong>R$ ${v.valorPago.toFixed(2)}</strong>
+                <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
             </div>
         `;
     });
@@ -408,7 +401,6 @@ function gerarPDFDia() {
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
 }
 
-// Função de Impressão: Salva automaticamente no pátio e abre o PDF
 function imprimirTicketEntrada() {
     const placaInput = document.getElementById('placa');
     const tipoSelect = document.getElementById('tipo');
@@ -425,7 +417,6 @@ function imprimirTicketEntrada() {
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
 
     if (editandoId) {
-        // Se estiver editando pela tela de entrada ao invés de salvar novo
         patio = patio.map(v => {
             if (v.id === editandoId) {
                 return { ...v, placa, tipo, horaEntrada };
