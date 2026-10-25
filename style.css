@@ -34,16 +34,27 @@ header { background-color: var(--card-bg); padding: 15px; text-align: center; bo
     display: block;
 }
 
+/* Container do menu forçando os botões ficarem lado a lado */
+nav {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+}
+
+/* Tamanho e estilo dos botões ajustados */
 nav button { 
     background: none; 
     border: 1px solid var(--accent-light); 
     color: var(--accent-light); 
-    padding: 10px 15px; 
-    margin: 0 5px; 
+    padding: 10px 5px; /* Menos preenchimento nas laterais */
     cursor: pointer; 
     border-radius: 5px; 
-    font-size: 0.8em; 
+    font-size: 0.55em; /* Fonte menorzinha pra caber tudo */
+    flex: 1; /* Faz os 3 botões dividirem o espaço por igual */
+    text-align: center;
 }
+
 nav button:hover, nav button.active { 
     background-color: var(--accent-light); 
     color: var(--bg-color); 
