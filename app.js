@@ -2,7 +2,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registrado com sucesso!"));
 }
 
-const taxas = { moto: 2.00, carro: 4.00, carro_grande: 8.00 };
+// O valor foi atualizado aqui de 8.00 pra 6.00
+const taxas = { moto: 2.00, carro: 4.00, carro_grande: 6.00 };
 let veiculoAtual = null;
 let editandoId = null;
 
