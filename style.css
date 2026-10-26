@@ -27,7 +27,7 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 .logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
 
-/* Menu no topo: Ajustado para ícone em cima e texto embaixo (evita estourar a tela) */
+/* Menu no topo: ícone em cima e texto embaixo, compacto e responsivo */
 nav {
     display: flex;
     justify-content: space-between;
@@ -42,11 +42,11 @@ nav button {
     padding: 8px 2px; 
     cursor: pointer; 
     border-radius: 5px; 
-    font-size: 0.38em; /* Fonte um pouco menor para encaixar perfeitamente */
+    font-size: 0.38em; 
     flex: 1; 
     text-align: center;
     display: flex;
-    flex-direction: column; /* Joga o ícone em cima e o texto embaixo */
+    flex-direction: column; 
     align-items: center;
     justify-content: center;
     gap: 4px;
@@ -59,6 +59,7 @@ nav button svg {
     stroke: currentColor;
     width: 14px;
     height: 14px;
+    pointer-events: none; /* Faz o clique atravessar o ícone e pegar direto no botão */
 }
 
 nav button:hover, nav button.active { 
@@ -67,7 +68,7 @@ nav button:hover, nav button.active {
     transform: translateY(-2px);
 }
 
-/* Badge de contagem discreta no canto superior do botão Pátio */
+/* Badge de contagem em tempo real no menu */
 .badge-count {
     background-color: var(--danger-color);
     color: white;
