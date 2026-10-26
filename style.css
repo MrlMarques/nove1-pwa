@@ -27,7 +27,7 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 .logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
 
-/* Menu de volta no topo, mas com a formatação animada mantida */
+/* Menu no topo com alinhamento dos ícones */
 nav {
     display: flex;
     justify-content: center;
@@ -45,7 +45,16 @@ nav button {
     font-size: 0.45em; 
     flex: 1; 
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+nav button svg {
+    flex-shrink: 0;
+    stroke: currentColor;
 }
 
 nav button:hover, nav button.active { 
@@ -54,7 +63,26 @@ nav button:hover, nav button.active {
     transform: translateY(-2px);
 }
 
-/* Feedback tátil ao clicar nos botões */
+/* Badge de contagem em tempo real no menu */
+.badge-count {
+    background-color: var(--danger-color);
+    color: white;
+    font-size: 0.85em;
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-left: 2px;
+    font-family: sans-serif;
+    min-width: 16px;
+    text-align: center;
+    display: inline-block;
+}
+
+nav button.active .badge-count {
+    background-color: var(--bg-color);
+    color: var(--accent-light);
+}
+
+/* Feedback tátil: afunda o botão ao tocar */
 nav button:active, button:active {
     transform: scale(0.92);
     filter: brightness(0.8);
@@ -107,4 +135,44 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
     font-size: 0.75em;
     color: var(--border-color);
     font-family: sans-serif; 
+}
+
+/* Toast Notifications & Confirm Modal Styles */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-left: 5px solid var(--accent-light);
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+    font-family: sans-serif;
+    font-size: 0.9em;
+    font-weight: bold;
+    animation: slideInRight 0.3s ease-out forwards, fadeOut 0.3s ease-in 2.7s forwards;
+    max-width: 300px;
+    pointer-events: all;
+}
+
+.toast.success { border-color: #4CAF50; }
+.toast.error { border-color: var(--danger-color); }
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
