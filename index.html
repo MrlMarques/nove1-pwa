@@ -4,21 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nove1 - Estética Automotiva</title>
-    <!-- O nome certinho pra puxar o estilo escuro e a fonte -->
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
     <header>
-        <!-- A imagem puxando o arquivo com nome exato que tá no GitHub -->
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
-        <nav>
-            <button onclick="showTab('entrada', this)" class="active">ENTRADA</button>
-            <button onclick="showTab('patio', this)">PÁTIO</button>
-            <button onclick="showTab('historico', this)">HISTÓRICO</button>
-            <button onclick="showTab('relatorios', this)">RELATÓRIOS</button>
-        </nav>
     </header>
 
     <main>
@@ -70,10 +62,17 @@
         </section>
     </main>
 
-    <!-- Rodapé brabo com a tua assinatura, aparecendo em todas as telas -->
     <footer class="rodape-brabo">
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
+
+    <!-- MENU INFERIOR FIXO -->
+    <nav>
+        <button onclick="showTab('entrada', this)" class="active">ENTRADA</button>
+        <button onclick="showTab('patio', this)">PÁTIO</button>
+        <button onclick="showTab('historico', this)">HISTÓRICO</button>
+        <button onclick="showTab('relatorios', this)">RELATÓRIOS</button>
+    </nav>
 
     <!-- MODAL DE SAÍDA -->
     <div id="modal-saida" class="modal">
