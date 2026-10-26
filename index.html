@@ -12,15 +12,26 @@
     <header>
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
-            <button onclick="showTab('entrada', this)" class="active">ENTRADA</button>
-            <button onclick="showTab('patio', this)">PÁTIO</button>
-            <button onclick="showTab('historico', this)">HISTÓRICO</button>
-            <button onclick="showTab('relatorios', this)">RELATÓRIOS</button>
+            <button onclick="showTab('entrada', this)" class="active">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                ENTRADA
+            </button>
+            <button onclick="showTab('patio', this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                PÁTIO <span id="badge-patio" class="badge-count">0</span>
+            </button>
+            <button onclick="showTab('historico', this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                HISTÓRICO
+            </button>
+            <button onclick="showTab('relatorios', this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                RELATÓRIOS
+            </button>
         </nav>
     </header>
 
     <main>
-        <!-- ABA ENTRADA -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
@@ -37,13 +48,11 @@
             </form>
         </section>
 
-        <!-- ABA PÁTIO -->
         <section id="patio" class="tab">
             <h2>Veículos no Pátio</h2>
             <div id="lista-patio"></div>
         </section>
 
-        <!-- ABA HISTÓRICO -->
         <section id="historico" class="tab">
             <h2>Histórico por Data</h2>
             <input type="date" id="data-historico" onchange="atualizarHistorico()">
@@ -53,7 +62,6 @@
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico</button>
         </section>
 
-        <!-- ABA RELATÓRIOS -->
         <section id="relatorios" class="tab">
             <h2>Relatório por Período</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -89,6 +97,20 @@
             <button onclick="fecharModal()" class="btn-danger">Cancelar</button>
         </div>
     </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO -->
+    <div id="modal-confirm" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h3 id="confirm-msg" style="margin-bottom: 20px; font-size: 1em; color: var(--text-color);"></h3>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-confirm-yes" class="btn-success" style="flex: 1;">SIM</button>
+                <button onclick="fecharConfirm()" class="btn-danger" style="flex: 1;">NÃO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTÊINER DOS TOASTS -->
+    <div id="toast-container"></div>
 
     <script src="app.js"></script>
 </body>
