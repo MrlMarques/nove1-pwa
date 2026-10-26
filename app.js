@@ -1,11 +1,11 @@
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registrado com sucesso!"));
+    navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registrado!"));
 }
 
-// O valor foi atualizado aqui de 8.00 pra 6.00
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 6.00 };
 let veiculoAtual = null;
 let editandoId = null;
+let confirmAction = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
@@ -18,11 +18,47 @@ document.addEventListener("DOMContentLoaded", () => {
     calcularRelatorioPeriodo();
 });
 
+// FUNÇÃO PARA ATUALIZAR A BADGE DE CONTAGEM NO MENU
+function atualizarBadgePatio() {
+    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    const badge = document.getElementById('badge-patio');
+    if (badge) {
+        badge.innerText = patio.length;
+        // Oculta a badge se o pátio estiver vazio para ficar limpo
+        badge.style.display = patio.length > 0 ? 'inline-block' : 'inline-block';
+    }
+}
+
+// SISTEMA DE TOASTS E MODAL CUSTOMIZADO
+function showToast(mensagem, tipo = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${tipo}`;
+    toast.innerText = mensagem;
+    container.appendChild(toast);
+    
+    setTimeout(() => { toast.remove(); }, 3000);
+}
+
+function showConfirm(mensagem, callback) {
+    document.getElementById('confirm-msg').innerText = mensagem;
+    document.getElementById('modal-confirm').style.display = 'flex';
+    confirmAction = callback;
+}
+
+document.getElementById('btn-confirm-yes').addEventListener('click', () => {
+    if (confirmAction) confirmAction();
+    fecharConfirm();
+});
+
+function fecharConfirm() {
+    document.getElementById('modal-confirm').style.display = 'none';
+    confirmAction = null;
+}
+
 document.getElementById('placa').addEventListener('input', function(e) {
     let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
-    if (val.length > 3) {
-        val = val.substring(0, 3) + '-' + val.substring(3, 7);
-    }
+    if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 7);
     this.value = val;
 });
 
@@ -31,13 +67,8 @@ function showTab(tabId, btnElement) {
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     
     const abaAlvo = document.getElementById(tabId);
-    if (abaAlvo) {
-        abaAlvo.classList.add('active');
-    }
-    
-    if (btnElement) {
-        btnElement.classList.add('active');
-    }
+    if (abaAlvo) abaAlvo.classList.add('active');
+    if (btnElement) btnElement.classList.add('active');
 }
 
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
@@ -47,35 +78,31 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     const horaEntrada = document.getElementById('hora-entrada').value;
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    let isEdit = editandoId !== null;
 
-    if (editandoId) {
-        patio = patio.map(v => {
-            if (v.id === editandoId) {
-                return { ...v, placa, tipo, horaEntrada };
-            }
-            return v;
-        });
+    if (isEdit) {
+        patio = patio.map(v => v.id === editandoId ? { ...v, placa, tipo, horaEntrada } : v);
         editandoId = null;
         document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
     } else {
-        const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
-        patio.push(veiculo);
+        patio.push({ id: Date.now(), placa, tipo, horaEntrada, status: 'patio' });
     }
 
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
-
     e.target.reset();
     document.getElementById('hora-entrada').type = 'text'; 
     atualizarPatio();
     
-    const patioBtn = document.querySelectorAll('nav button')[1];
-    showTab('patio', patioBtn);
+    showToast(isEdit ? "Entrada atualizada com sucesso!" : "Veículo registrado no pátio!", "success");
+    showTab('patio', document.querySelectorAll('nav button')[1]);
 });
 
 function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
     lista.innerHTML = '';
+
+    atualizarBadgePatio(); // Atualiza o contador em tempo real
 
     if (patio.length === 0) {
         lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum veículo no pátio no momento.</p>';
@@ -106,31 +133,28 @@ function editarPatio(id) {
 
     document.getElementById('placa').value = veiculo.placa;
     document.getElementById('tipo').value = veiculo.tipo;
-    
     const inputHora = document.getElementById('hora-entrada');
     inputHora.type = 'time';
     inputHora.value = veiculo.horaEntrada;
 
     editandoId = id;
     document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Edição";
-
-    const entradaBtn = document.querySelectorAll('nav button')[0];
-    showTab('entrada', entradaBtn);
+    showTab('entrada', document.querySelectorAll('nav button')[0]);
 }
 
 function excluirPatio(id) {
-    if (confirm("Certeza que deseja remover este veículo do pátio, parceiro?")) {
+    showConfirm("Certeza que deseja remover este veículo do pátio, parceiro?", () => {
         let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
         patio = patio.filter(v => v.id !== id);
         localStorage.setItem('nove1_patio', JSON.stringify(patio));
         atualizarPatio();
-    }
+        showToast("Veículo removido do pátio!", "success");
+    });
 }
 
 function abrirSaida(id) {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     veiculoAtual = patio.find(v => v.id === id);
-    
     document.getElementById('modal-placa').innerText = veiculoAtual.placa;
     document.getElementById('modal-saida').style.display = 'flex';
 }
@@ -141,9 +165,13 @@ function fecharModal() {
 }
 
 function calcularValor() {
-    if(!veiculoAtual) return;
+    if(!veiculoAtual) return null;
     const horaSaida = document.getElementById('hora-saida').value;
-    if(!horaSaida) return alert("Bota a hora de saída aí, parceiro!");
+    
+    if(!horaSaida) {
+        showToast("Bota a hora de saída aí, parceiro!", "error");
+        return null;
+    }
 
     const [hEnt, mEnt] = veiculoAtual.horaEntrada.split(':').map(Number);
     const [hSai, mSai] = horaSaida.split(':').map(Number);
@@ -154,11 +182,8 @@ function calcularValor() {
     let horasCobradas = Math.floor(totalMinutos / 60);
     let minutosRestantes = totalMinutos % 60;
 
-    if (horasCobradas === 0) {
-        horasCobradas = 1; 
-    } else if (minutosRestantes > 5) {
-        horasCobradas += 1; 
-    }
+    if (horasCobradas === 0) horasCobradas = 1; 
+    else if (minutosRestantes > 5) horasCobradas += 1; 
 
     const desconto = Number(document.getElementById('desconto').value) || 0;
     let total = (horasCobradas * taxas[veiculoAtual.tipo]) - desconto;
@@ -172,11 +197,9 @@ function finalizarSaida() {
     const calc = calcularValor();
     if(!calc) return;
 
-    const formPgto = document.getElementById('pagamento').value;
-    
     veiculoAtual.horaSaida = calc.horaSaida;
     veiculoAtual.valorPago = calc.total;
-    veiculoAtual.pagamento = formPgto;
+    veiculoAtual.pagamento = document.getElementById('pagamento').value;
     veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); 
 
     let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
@@ -192,17 +215,17 @@ function finalizarSaida() {
     atualizarHistorico();
     calcularRelatorioPeriodo();
     
-    const historicoBtn = document.querySelectorAll('nav button')[2];
-    showTab('historico', historicoBtn);
+    showToast(`Saída concluída! R$ ${calc.total.toFixed(2)} pro caixa.`, "success");
+    showTab('historico', document.querySelectorAll('nav button')[2]);
 }
 
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
     if(!dataInput) return; 
+    
     const [ano, mes, dia] = dataInput.split('-');
     const dataFiltro = `${dia}/${mes}/${ano}`;
-
     const lista = document.getElementById('lista-historico');
     lista.innerHTML = '';
     
@@ -233,28 +256,26 @@ function atualizarHistorico() {
 }
 
 function excluirHistorico(id) {
-    if (confirm("Tem certeza que quer apagar este registro do histórico?")) {
+    showConfirm("Tem certeza que quer apagar este registro do histórico?", () => {
         let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
         historico = historico.filter(v => v.id !== id);
         localStorage.setItem('nove1_historico', JSON.stringify(historico));
         atualizarHistorico();
         calcularRelatorioPeriodo();
-    }
+        showToast("Registro apagado!", "success");
+    });
 }
 
 function calcularRelatorioPeriodo() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const inicioStr = document.getElementById('data-inicio').value;
     const fimStr = document.getElementById('data-fim').value;
-
     if (!inicioStr || !fimStr) return;
 
     const dataInicio = new Date(inicioStr + 'T00:00:00');
     const dataFim = new Date(fimStr + 'T23:59:59');
-
     const lista = document.getElementById('lista-periodo');
     lista.innerHTML = '';
-    
     let totalPeriodo = 0;
 
     const filtrados = historico.filter(v => {
@@ -286,28 +307,27 @@ function gerarPDFPeriodo() {
     const inicioStr = document.getElementById('data-inicio').value;
     const fimStr = document.getElementById('data-fim').value;
 
-    if (!inicioStr || !fimStr) return alert("Selecione a data inicial e final, parceiro!");
+    if (!inicioStr || !fimStr) return showToast("Selecione a data inicial e final, parceiro!", "error");
 
     const dataInicio = new Date(inicioStr + 'T00:00:00');
     const dataFim = new Date(fimStr + 'T23:59:59');
     const [anoI, mesI, diaI] = inicioStr.split('-');
     const [anoF, mesF, diaF] = fimStr.split('-');
-    const periodoFormatado = `${diaI}/${mesI}/${anoI} até ${diaF}/${mesF}/${anoF}`;
-
+    
     const filtrados = historico.filter(v => {
         const [d, m, a] = v.data.split('/');
         const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
         return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
     });
 
-    if (filtrados.length === 0) return alert("Não há registros neste período para exportar!");
+    if (filtrados.length === 0) return showToast("Não há registros neste período para exportar!", "error");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio Consolidado por Periodo: ${periodoFormatado}`, 14, 28);
+    doc.text(`Relatorio Consolidado por Periodo: ${diaI}/${mesI}/${anoI} ate ${diaF}/${mesF}/${anoF}`, 14, 28);
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
@@ -342,6 +362,7 @@ function gerarPDFPeriodo() {
     doc.setFontSize(14);
     doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);
     doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
+    showToast("PDF de Período gerado!", "success");
 }
 
 function gerarPDFDia() {
@@ -349,13 +370,14 @@ function gerarPDFDia() {
     const doc = new jsPDF();
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
-    if (!dataInput) return alert("Selecione uma data para exportar o relatório!");
+    
+    if (!dataInput) return showToast("Selecione uma data para exportar o relatório!", "error");
     
     const [ano, mes, dia] = dataInput.split('-');
     const dataFiltro = `${dia}/${mes}/${ano}`;
     const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
 
-    if (veiculosDoDia.length === 0) return alert("Não há registros para exportar nesta data, parceiro!");
+    if (veiculosDoDia.length === 0) return showToast("Não há registros para exportar nesta data!", "error");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
@@ -398,6 +420,7 @@ function gerarPDFDia() {
     doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
 
     doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
+    showToast("PDF do Dia gerado!", "success");
 }
 
 function imprimirTicketEntrada() {
@@ -405,52 +428,23 @@ function imprimirTicketEntrada() {
     const tipoSelect = document.getElementById('tipo');
     const horaEntradaInput = document.getElementById('hora-entrada');
 
-    const placa = placaInput.value.toUpperCase();
-    const tipo = tipoSelect.value;
-    const horaEntrada = horaEntradaInput.value;
-
-    if (!placa || !tipo || !horaEntrada) {
-        return alert("Preencha a placa, o tipo e o horário de entrada antes de imprimir, parceiro!");
+    if (!placaInput.value || !tipoSelect.value || !horaEntradaInput.value) {
+        return showToast("Preencha placa, tipo e horário de entrada antes de imprimir!", "error");
     }
 
-    let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    document.querySelector('#form-entrada button[type="submit"]').click();
 
-    if (editandoId) {
-        patio = patio.map(v => {
-            if (v.id === editandoId) {
-                return { ...v, placa, tipo, horaEntrada };
-            }
-            return v;
-        });
-        editandoId = null;
-        document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
-    } else {
-        const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
-        patio.push(veiculo);
-    }
-
-    localStorage.setItem('nove1_patio', JSON.stringify(patio));
-
-    document.getElementById('form-entrada').reset();
-    horaEntradaInput.type = 'text'; 
-    atualizarPatio();
-
-    let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
+    let tipoFormatado = tipoSelect.value.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [58, 100]
-    });
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [58, 100] });
 
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
     doc.text("NOVE1 ESTETICA", 29, 6, { align: "center" });
     doc.setFontSize(7);
     doc.text("AUTOMOTIVA", 29, 10, { align: "center" });
-    
     doc.text("--------------------------------", 29, 14, { align: "center" });
     doc.text("COMPROVANTE DE ENTRADA", 29, 18, { align: "center" });
     doc.text("--------------------------------", 29, 22, { align: "center" });
@@ -458,21 +452,15 @@ function imprimirTicketEntrada() {
     doc.setFont("courier", "normal");
     doc.setFontSize(8);
     let y = 28;
-    doc.text(`Data: ${dataHoje}`, 3, y);
-    y += 5;
-    doc.text(`Placa: ${placa}`, 3, y);
-    y += 5;
-    doc.text(`Tipo: ${tipoFormatado}`, 3, y);
-    y += 5;
-    doc.text(`Entrada: ${horaEntrada}`, 3, y);
+    doc.text(`Data: ${dataHoje}`, 3, y); y += 5;
+    doc.text(`Placa: ${placaInput.value.toUpperCase()}`, 3, y); y += 5;
+    doc.text(`Tipo: ${tipoFormatado}`, 3, y); y += 5;
+    doc.text(`Entrada: ${horaEntradaInput.value}`, 3, y);
     
     y += 7;
-    doc.text("--------------------------------", 29, y, { align: "center" });
-    y += 5;
-    doc.text("Conserve este ticket", 29, y, { align: "center" });
-    y += 4;
-    doc.text("para a retirada.", 29, y, { align: "center" });
-    y += 5;
+    doc.text("--------------------------------", 29, y, { align: "center" }); y += 5;
+    doc.text("Conserve este ticket", 29, y, { align: "center" }); y += 4;
+    doc.text("para a retirada.", 29, y, { align: "center" }); y += 5;
     doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
     const pdfBlob = doc.output('blob');
@@ -488,9 +476,10 @@ function imprimirTicketEntrada() {
 }
 
 function limparHistorico() {
-    if(confirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!")) {
+    showConfirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!", () => {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
         calcularRelatorioPeriodo();
-    }
+        showToast("Histórico zerado com sucesso!", "success");
+    });
 }
