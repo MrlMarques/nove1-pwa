@@ -27,11 +27,11 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 .logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
 
-/* Menu no topo com alinhamento dos ícones */
+/* Menu no topo: Ajustado para ícone em cima e texto embaixo (evita estourar a tela) */
 nav {
     display: flex;
-    justify-content: center;
-    gap: 4px;
+    justify-content: space-between;
+    gap: 3px;
     width: 100%;
 }
 
@@ -39,22 +39,26 @@ nav button {
     background: none; 
     border: 1px solid var(--accent-light); 
     color: var(--accent-light); 
-    padding: 12px 2px; 
+    padding: 8px 2px; 
     cursor: pointer; 
     border-radius: 5px; 
-    font-size: 0.45em; 
+    font-size: 0.38em; /* Fonte um pouco menor para encaixar perfeitamente */
     flex: 1; 
     text-align: center;
     display: flex;
+    flex-direction: column; /* Joga o ícone em cima e o texto embaixo */
     align-items: center;
     justify-content: center;
     gap: 4px;
+    position: relative;
     transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 nav button svg {
     flex-shrink: 0;
     stroke: currentColor;
+    width: 14px;
+    height: 14px;
 }
 
 nav button:hover, nav button.active { 
@@ -63,18 +67,19 @@ nav button:hover, nav button.active {
     transform: translateY(-2px);
 }
 
-/* Badge de contagem em tempo real no menu */
+/* Badge de contagem discreta no canto superior do botão Pátio */
 .badge-count {
     background-color: var(--danger-color);
     color: white;
-    font-size: 0.85em;
-    padding: 1px 5px;
-    border-radius: 10px;
-    margin-left: 2px;
+    font-size: 0.75em;
+    padding: 1px 4px;
+    border-radius: 8px;
     font-family: sans-serif;
-    min-width: 16px;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 14px;
     text-align: center;
-    display: inline-block;
 }
 
 nav button.active .badge-count {
