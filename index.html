@@ -32,6 +32,7 @@
     </header>
 
     <main>
+        <!-- ABA ENTRADA -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
@@ -48,11 +49,13 @@
             </form>
         </section>
 
+        <!-- ABA PÁTIO -->
         <section id="patio" class="tab">
             <h2>Veículos no Pátio</h2>
             <div id="lista-patio"></div>
         </section>
 
+        <!-- ABA HISTÓRICO -->
         <section id="historico" class="tab">
             <h2>Histórico por Data</h2>
             <input type="date" id="data-historico" onchange="atualizarHistorico()">
@@ -62,6 +65,7 @@
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico</button>
         </section>
 
+        <!-- ABA RELATÓRIOS -->
         <section id="relatorios" class="tab">
             <h2>Relatório por Período</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -76,6 +80,7 @@
         </section>
     </main>
 
+    <!-- Rodapé brabo com a assinatura -->
     <footer class="rodape-brabo">
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
@@ -98,7 +103,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO -->
+    <!-- MODAL DE CONFIRMAÇÃO CUSTOMIZADO -->
     <div id="modal-confirm" class="modal">
         <div class="modal-content" style="text-align: center;">
             <h3 id="confirm-msg" style="margin-bottom: 20px; font-size: 1em; color: var(--text-color);"></h3>
