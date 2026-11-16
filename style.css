@@ -15,6 +15,7 @@
     --danger-color: #ff3333;
     --edit-color: #f0ad4e;
     --success-color: #4CAF50;
+    --qr-color: #00d2ff;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
@@ -114,24 +115,25 @@ button { padding: 12px; background-color: var(--accent-light); color: var(--bg-c
 button.btn-danger { background-color: var(--danger-color); color: white; }
 button.btn-success { background-color: var(--accent-dark); color: white; }
 
-/* Botão de Leitura de QR Code no Pátio */
-.btn-qr {
-    width: 100%;
-    margin-bottom: 15px;
-    background-color: transparent;
-    border: 2px dashed var(--accent-light);
+/* Botão de Strobo no modal do QR Code */
+.btn-strobo {
+    background-color: #222;
+    border: 2px solid var(--accent-light);
     color: var(--accent-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 0.72em;
-    padding: 14px 10px;
+    font-size: 0.75em;
+    padding: 12px;
 }
 
-.btn-qr svg {
-    pointer-events: none;
-    flex-shrink: 0;
+.btn-strobo.ativo {
+    background-color: #ffffff;
+    color: #0d0d0d;
+    border-color: #ffffff;
+    animation: pulsoStrobo 0.4s infinite alternate;
+}
+
+@keyframes pulsoStrobo {
+    from { box-shadow: 0 0 4px #ffffff; }
+    to { box-shadow: 0 0 18px #ffffff, 0 0 28px var(--accent-light); }
 }
 
 /* Container da Câmera QR Code */
@@ -155,6 +157,26 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
     border-right: 1px solid var(--border-color);
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
+}
+
+/* Barra de 4 botões alinhados dentro do card do Pátio */
+.card-actions {
+    display: flex;
+    gap: 4px;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+}
+
+.card-actions button {
+    flex: 1;
+    border: none;
+    padding: 9px 2px;
+    font-weight: bold;
+    border-radius: 4px;
+    font-size: 0.52em;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 2000; }
