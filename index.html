@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nove1 - Estética Automotiva</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Biblioteca para gerar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Biblioteca leve para gerar QR Code no ticket -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <!-- Biblioteca para ler QR Code pela câmera do celular -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -45,13 +50,17 @@
                 </select>
                 <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="this.type='time'; this.value = new Date().toTimeString().substring(0,5);" required>
                 <button type="submit" class="btn-success">Salvar Entrada</button>
-                <button type="button" onclick="imprimirTicketEntrada()">Imprimir Ticket de Entrada</button>
+                <button type="button" onclick="imprimirTicketEntrada()">Imprimir Ticket com QR Code</button>
             </form>
         </section>
 
         <!-- ABA PÁTIO -->
         <section id="patio" class="tab">
             <h2>Veículos no Pátio</h2>
+            <button type="button" onclick="abrirLeitorQR()" class="btn-qr">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                DAR BAIXA VIA QR CODE
+            </button>
             <div id="lista-patio"></div>
         </section>
 
@@ -65,37 +74,40 @@
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico</button>
         </section>
 
-        <!-- ABA RELATÓRIOS -->
+        <!-- ABA RELATÓRIOS (APENAS POR MÊS) -->
         <section id="relatorios" class="tab">
-            <h2>Relatórios</h2>
+            <h2>Relatório Mensal</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
-                <label for="mes-relatorio" style="color: var(--accent-light); font-weight: bold;">Filtrar por Mês Fechado:</label>
-                <input type="month" id="mes-relatorio" onchange="filtrarPorMes()">
-
-                <div style="border-top: 1px solid var(--border-color); margin: 5px 0; padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-                    <label for="data-inicio">Ou entre Datas — Data Inicial:</label>
-                    <input type="date" id="data-inicio" onchange="limparFiltroMes(); calcularRelatorioPeriodo()">
-                    <label for="data-fim">Data Final:</label>
-                    <input type="date" id="data-fim" onchange="limparFiltroMes(); calcularRelatorioPeriodo()">
-                </div>
+                <label for="mes-relatorio" style="color: var(--accent-light); font-weight: bold;">Selecione o Mês:</label>
+                <input type="month" id="mes-relatorio" onchange="calcularRelatorioMes()">
             </div>
-            <div class="resumo-dia">TOTAL DO PERÍODO: R$ <span id="total-periodo">0.00</span></div>
-            <div id="lista-periodo" style="margin-top: 15px;"></div>
-            <button onclick="gerarPDFPeriodo()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Período em PDF</button>
+            <div class="resumo-dia">TOTAL DO MÊS: R$ <span id="total-mes">0.00</span></div>
+            <div id="lista-mes" style="margin-top: 15px;"></div>
+            <button onclick="gerarPDFMes()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Mês em PDF</button>
         </section>
     </main>
 
-    <!-- Rodapé brabo com a assinatura -->
+    <!-- Rodapé -->
     <footer class="rodape-brabo">
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
+
+    <!-- MODAL LEITOR DE QR CODE -->
+    <div id="modal-qr" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h3 style="color: var(--accent-light); font-size: 0.95em;">Aponte para o Ticket</h3>
+            <div id="qr-reader"></div>
+            <p style="font-size: 0.8em; color: #aaa;">Posicione o QR Code do comprovante dentro do quadrado.</p>
+            <button type="button" onclick="fecharLeitorQR()" class="btn-danger">Fechar Câmera</button>
+        </div>
+    </div>
 
     <!-- MODAL DE SAÍDA -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
-            <input type="time" id="hora-saida">
-            <input type="number" id="desconto" placeholder="Aplicar desconto (R$)" step="0.50">
+            <input type="time" id="hora-saida" onchange="calcularValor()">
+            <input type="number" id="desconto" placeholder="Aplicar desconto (R$)" step="0.50" oninput="calcularValor()">
             <select id="pagamento">
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
