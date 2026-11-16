@@ -67,12 +67,17 @@
 
         <!-- ABA RELATÓRIOS -->
         <section id="relatorios" class="tab">
-            <h2>Relatório por Período</h2>
+            <h2>Relatórios</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
-                <label>Data Inicial:</label>
-                <input type="date" id="data-inicio" onchange="calcularRelatorioPeriodo()">
-                <label>Data Final:</label>
-                <input type="date" id="data-fim" onchange="calcularRelatorioPeriodo()">
+                <label for="mes-relatorio" style="color: var(--accent-light); font-weight: bold;">Filtrar por Mês Fechado:</label>
+                <input type="month" id="mes-relatorio" onchange="filtrarPorMes()">
+
+                <div style="border-top: 1px solid var(--border-color); margin: 5px 0; padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                    <label for="data-inicio">Ou entre Datas — Data Inicial:</label>
+                    <input type="date" id="data-inicio" onchange="limparFiltroMes(); calcularRelatorioPeriodo()">
+                    <label for="data-fim">Data Final:</label>
+                    <input type="date" id="data-fim" onchange="limparFiltroMes(); calcularRelatorioPeriodo()">
+                </div>
             </div>
             <div class="resumo-dia">TOTAL DO PERÍODO: R$ <span id="total-periodo">0.00</span></div>
             <div id="lista-periodo" style="margin-top: 15px;"></div>
