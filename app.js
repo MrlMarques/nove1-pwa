@@ -12,6 +12,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('data-historico').valueAsDate = hoje;
     document.getElementById('data-inicio').valueAsDate = hoje;
     document.getElementById('data-fim').valueAsDate = hoje;
+
+    const inputMes = document.getElementById('mes-relatorio');
+    if (inputMes) {
+        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        inputMes.value = mesAtual;
+    }
     
     atualizarPatio();
     atualizarHistorico();
@@ -22,12 +28,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const abasIds = ['entrada', 'patio', 'historico', 'relatorios'];
 
     botoesMenu.forEach((btn, index) => {
-        btn.onclick = null; // Limpa qualquer conflito anterior
+        btn.onclick = null;
         btn.addEventListener('click', () => {
             showTab(abasIds[index], btn);
         });
     });
 });
+
+// FILTRO POR MÊS FECHADO NA ABA RELATÓRIOS
+function filtrarPorMes() {
+    const mesInput = document.getElementById('mes-relatorio').value; // Formato "YYYY-MM"
+    if (!mesInput) return;
+
+    const [ano, mes] = mesInput.split('-').map(Number);
+    const primeiroDia = `${ano}-${String(mes).padStart(2, '0')}-01`;
+    const ultimoDiaNumero = new Date(ano, mes, 0).getDate();
+    const ultimoDia = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDiaNumero).padStart(2, '0')}`;
+
+    document.getElementById('data-inicio').value = primeiroDia;
+    document.getElementById('data-fim').value = ultimoDia;
+
+    calcularRelatorioPeriodo();
+    showToast(`Exibindo relatório de ${String(mes).padStart(2, '0')}/${ano}`, "info");
+}
+
+function limparFiltroMes() {
+    const inputMes = document.getElementById('mes-relatorio');
+    if (inputMes) inputMes.value = '';
+}
 
 // FUNÇÃO PARA ATUALIZAR A BADGE DE CONTAGEM NO MENU
 function atualizarBadgePatio() {
@@ -35,7 +63,7 @@ function atualizarBadgePatio() {
     const badge = document.getElementById('badge-patio');
     if (badge) {
         badge.innerText = patio.length;
-        badge.style.display = patio.length > 0 ? 'inline-block' : 'inline-block';
+        badge.style.display = 'inline-block';
     }
 }
 
@@ -293,6 +321,10 @@ function calcularRelatorioPeriodo() {
         const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
         return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
     });
+
+    if (filtrados.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado neste período.</p>';
+    }
 
     filtrados.forEach(v => {
         totalPeriodo += v.valorPago;
