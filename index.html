@@ -9,27 +9,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Biblioteca leve para gerar QR Code no ticket -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <!-- Biblioteca para ler QR Code pela câmera do celular -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Biblioteca para ler QR Code pela câmera (via Cloudflare CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
     <header>
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
-            <button onclick="showTab('entrada', this)" class="active">
+            <button type="button" class="active">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 ENTRADA
             </button>
-            <button onclick="showTab('patio', this)">
+            <button type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                 PÁTIO <span id="badge-patio" class="badge-count">0</span>
             </button>
-            <button onclick="showTab('historico', this)">
+            <button type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 HISTÓRICO
             </button>
-            <button onclick="showTab('relatorios', this)">
+            <button type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 RELATÓRIOS
             </button>
@@ -57,10 +57,6 @@
         <!-- ABA PÁTIO -->
         <section id="patio" class="tab">
             <h2>Veículos no Pátio</h2>
-            <button type="button" onclick="abrirLeitorQR()" class="btn-qr">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                DAR BAIXA VIA QR CODE
-            </button>
             <div id="lista-patio"></div>
         </section>
 
@@ -92,12 +88,15 @@
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
 
-    <!-- MODAL LEITOR DE QR CODE -->
+    <!-- MODAL LEITOR DE QR CODE COM STROBO -->
     <div id="modal-qr" class="modal">
         <div class="modal-content" style="text-align: center;">
             <h3 style="color: var(--accent-light); font-size: 0.95em;">Aponte para o Ticket</h3>
-            <div id="qr-reader"></div>
+            <div id="qr-reader" style="min-height: 220px;"></div>
             <p style="font-size: 0.8em; color: #aaa;">Posicione o QR Code do comprovante dentro do quadrado.</p>
+            <button type="button" id="btn-strobo" onclick="alternarStrobo()" class="btn-strobo">LIGAR STROBO</button>
+            <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display: none;" onchange="lerQRPorFoto(event)">
+            <button type="button" onclick="document.getElementById('qr-file-input').click()" class="btn-success" style="font-size: 0.72em;">Ler por Foto do Ticket</button>
             <button type="button" onclick="fecharLeitorQR()" class="btn-danger">Fechar Câmera</button>
         </div>
     </div>
