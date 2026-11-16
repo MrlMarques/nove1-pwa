@@ -7,6 +7,8 @@ let veiculoAtual = null;
 let editandoId = null;
 let confirmAction = null;
 let html5QrCode = null;
+let stroboInterval = null;
+let stroboAtivo = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
@@ -22,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     atualizarHistorico();
     calcularRelatorioMes();
 
-    // VÍNCULO BLINDADO: Garante que os botões do menu funcionem perfeitamente no mobile
+    // VÍNCULO BLINDADO DO MENU
     const botoesMenu = document.querySelectorAll('nav button');
     const abasIds = ['entrada', 'patio', 'historico', 'relatorios'];
 
@@ -35,51 +37,148 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// LEITOR DE QR CODE (DAR BAIXA PELA CÂMERA)
+// CONTROLE DO STROBO / FLASH DA CÂMERA
+// ==========================================
+async function aplicarEstadoTorch(ligar) {
+    const videoElem = document.querySelector('#qr-reader video');
+    if (!videoElem || !videoElem.srcObject) return false;
+
+    const track = videoElem.srcObject.getVideoTracks()[0];
+    if (!track) return false;
+
+    try {
+        await track.applyConstraints({
+            advanced: [{ torch: ligar }]
+        });
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+async function alternarStrobo() {
+    const btnStrobo = document.getElementById('btn-strobo');
+
+    if (stroboAtivo) {
+        desligarStrobo();
+        showToast("Strobo desligado.", "info");
+        return;
+    }
+
+    const conseguiuLigar = await aplicarEstadoTorch(true);
+    if (!conseguiuLigar) {
+        showToast("Este navegador/aparelho não liberou o flash da câmera.", "error");
+        return;
+    }
+
+    stroboAtivo = true;
+    if (btnStrobo) {
+        btnStrobo.classList.add('ativo');
+        btnStrobo.innerText = "DESLIGAR STROBO";
+    }
+
+    let estadoLed = true;
+    stroboInterval = setInterval(async () => {
+        estadoLed = !estadoLed;
+        await aplicarEstadoTorch(estadoLed);
+    }, 250);
+
+    showToast("Strobo ligado!", "success");
+}
+
+function desligarStrobo() {
+    if (stroboInterval) {
+        clearInterval(stroboInterval);
+        stroboInterval = null;
+    }
+    stroboAtivo = false;
+    aplicarEstadoTorch(false);
+
+    const btnStrobo = document.getElementById('btn-strobo');
+    if (btnStrobo) {
+        btnStrobo.classList.remove('ativo');
+        btnStrobo.innerText = "LIGAR STROBO";
+    }
+}
+
+// ==========================================
+// LEITOR DE QR CODE (CÂMERA AO VIVO + FOTO)
 // ==========================================
 function abrirLeitorQR() {
     const modal = document.getElementById('modal-qr');
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 
-    html5QrCode = new Html5Qrcode("qr-reader");
-    const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+    if (typeof Html5Qrcode === 'undefined') {
+        showToast("Biblioteca de QR Code não carregou. Use 'Ler por Foto do Ticket'.", "error");
+        return;
+    }
 
-    html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-            processarLeituraQR(decodedText);
-        },
-        (errorMessage) => {
-            // Ignora frames sem QR Code enquanto o operador mira a câmera
+    try {
+        if (html5QrCode) {
+            html5QrCode.clear();
         }
-    ).catch(err => {
-        console.error(err);
-        showToast("Não foi possível acessar a câmera. Verifique a permissão!", "error");
-        fecharLeitorQR();
-    });
+        html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                processarLeituraQR(decodedText);
+            },
+            () => {}
+        ).catch(err => {
+            console.error("Erro câmera ao vivo:", err);
+            showToast("Câmera ao vivo bloqueada. Use o botão 'Ler por Foto do Ticket'!", "error");
+        });
+    } catch (e) {
+        console.error("Falha ao iniciar Html5Qrcode:", e);
+        showToast("Erro ao iniciar leitor. Use 'Ler por Foto do Ticket'.", "error");
+    }
+}
+
+function lerQRPorFoto(event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) return;
+
+    if (typeof Html5Qrcode === 'undefined') {
+        showToast("Biblioteca de QR Code indisponível offline.", "error");
+        return;
+    }
+
+    const leitorArquivo = new Html5Qrcode("qr-reader");
+    leitorArquivo.scanFile(arquivo, true)
+        .then(decodedText => {
+            event.target.value = '';
+            processarLeituraQR(decodedText);
+        })
+        .catch(err => {
+            console.error("Erro ao ler foto:", err);
+            event.target.value = '';
+            showToast("Não encontrei nenhum QR Code nítido nessa foto. Tente novamente!", "error");
+        });
 }
 
 function fecharLeitorQR() {
+    desligarStrobo();
     const modal = document.getElementById('modal-qr');
     if (html5QrCode) {
         html5QrCode.stop().then(() => {
             html5QrCode.clear();
             html5QrCode = null;
-            modal.style.display = 'none';
+            if (modal) modal.style.display = 'none';
         }).catch(() => {
             html5QrCode = null;
-            modal.style.display = 'none';
+            if (modal) modal.style.display = 'none';
         });
     } else {
-        modal.style.display = 'none';
+        if (modal) modal.style.display = 'none';
     }
 }
 
 function processarLeituraQR(codigoLido) {
     fecharLeitorQR();
 
-    // O ticket grava o padrão "NOVE1:ID" ou "NOVE1:ID|PLACA"
     let idExtraido = null;
     if (codigoLido.startsWith("NOVE1:")) {
         const partes = codigoLido.replace("NOVE1:", "").split("|");
@@ -105,7 +204,7 @@ function processarLeituraQR(codigoLido) {
 // ==========================================
 function calcularRelatorioMes() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const mesInput = document.getElementById('mes-relatorio').value; // "YYYY-MM"
+    const mesInput = document.getElementById('mes-relatorio').value;
     const lista = document.getElementById('lista-mes');
     lista.innerHTML = '';
 
@@ -114,7 +213,7 @@ function calcularRelatorioMes() {
         return;
     }
 
-    const [anoFiltro, mesFiltro] = mesInput.split('-'); // Ex: ["2026", "11"]
+    const [anoFiltro, mesFiltro] = mesInput.split('-');
     let totalMes = 0;
 
     const filtrados = historico.filter(v => {
@@ -301,10 +400,11 @@ function atualizarPatio() {
                     <strong style="font-size: 1.1em; color: var(--accent-light);">${v.placa}</strong> — <span style="text-transform: capitalize;">${v.tipo.replace('_', ' ')}</span><br>
                     <small style="color: #aaa;">Entrada: ${v.horaEntrada}</small>
                 </div>
-                <div style="display: flex; gap: 6px; border-top: 1px solid #333; padding-top: 10px;">
-                    <button onclick="abrirSaida(${v.id})" style="flex: 1; background: var(--accent-light); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">SAÍDA</button>
-                    <button onclick="editarPatio(${v.id})" style="flex: 1; background: var(--edit-color); color: var(--bg-color); border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">EDITAR</button>
-                    <button onclick="excluirPatio(${v.id})" style="flex: 1; background: var(--danger-color); color: white; border: none; padding: 8px 4px; font-weight: bold; border-radius: 4px; font-size: 0.7em; cursor: pointer;">EXCLUIR</button>
+                <div class="card-actions">
+                    <button type="button" onclick="abrirSaida(${v.id})" style="background: var(--accent-light); color: var(--bg-color);">SAÍDA</button>
+                    <button type="button" onclick="abrirLeitorQR()" style="background: var(--qr-color); color: var(--bg-color);">QR CODE</button>
+                    <button type="button" onclick="editarPatio(${v.id})" style="background: var(--edit-color); color: var(--bg-color);">EDITAR</button>
+                    <button type="button" onclick="excluirPatio(${v.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
                 </div>
             </div>
         `;
@@ -345,7 +445,6 @@ function abrirSaida(id) {
     document.getElementById('modal-placa').innerText = veiculoAtual.placa;
     document.getElementById('desconto').value = '';
     
-    // Já puxa a hora atual e calcula o valor automaticamente (agiliza a baixa por QR Code)
     const horaAtual = new Date().toTimeString().substring(0, 5);
     document.getElementById('hora-saida').value = horaAtual;
     
@@ -554,19 +653,20 @@ function imprimirTicketEntrada() {
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
     atualizarPatio();
 
-    // Gera a imagem Base64 do QR Code contendo o ID do registro
-    const qr = new QRious({
-        value: `NOVE1:${idVeiculo}|${placa}`,
-        size: 160,
-        level: 'M'
-    });
-    const qrDataUrl = qr.toDataURL();
+    let qrDataUrl = null;
+    if (typeof QRious !== 'undefined') {
+        const qr = new QRious({
+            value: `NOVE1:${idVeiculo}|${placa}`,
+            size: 160,
+            level: 'M'
+        });
+        qrDataUrl = qr.toDataURL();
+    }
 
     let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     const { jsPDF } = window.jspdf;
-    // Altura ajustada para 115mm para comportar o QR Code com folga
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [58, 115] });
 
     doc.setFont("courier", "bold");
@@ -586,10 +686,13 @@ function imprimirTicketEntrada() {
     doc.text(`Tipo: ${tipoFormatado}`, 3, y); y += 5;
     doc.text(`Entrada: ${horaEntrada}`, 3, y);
 
-    // Insere o QR Code centralizado (x=16, largura=26mm, altura=26mm)
-    y += 4;
-    doc.addImage(qrDataUrl, 'PNG', 16, y, 26, 26);
-    y += 30;
+    if (qrDataUrl) {
+        y += 4;
+        doc.addImage(qrDataUrl, 'PNG', 16, y, 26, 26);
+        y += 30;
+    } else {
+        y += 7;
+    }
 
     doc.text("--------------------------------", 29, y, { align: "center" }); y += 4;
     doc.text("Apresente este QR Code", 29, y, { align: "center" }); y += 4;
