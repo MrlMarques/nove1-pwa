@@ -14,6 +14,7 @@
     --card-bg: #1a1a1a; 
     --danger-color: #ff3333;
     --edit-color: #f0ad4e;
+    --success-color: #4CAF50;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
@@ -27,7 +28,7 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 .logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
 
-/* Menu no topo: ícone em cima e texto embaixo, compacto e responsivo */
+/* Menu no topo */
 nav {
     display: flex;
     justify-content: space-between;
@@ -59,7 +60,7 @@ nav button svg {
     stroke: currentColor;
     width: 14px;
     height: 14px;
-    pointer-events: none; /* Faz o clique atravessar o ícone e pegar direto no botão */
+    pointer-events: none;
 }
 
 nav button:hover, nav button.active { 
@@ -88,7 +89,6 @@ nav button.active .badge-count {
     color: var(--accent-light);
 }
 
-/* Feedback tátil: afunda o botão ao tocar */
 nav button:active, button:active {
     transform: scale(0.92);
     filter: brightness(0.8);
@@ -96,7 +96,6 @@ nav button:active, button:active {
 
 main { padding: 20px; max-width: 600px; margin: auto; }
 
-/* Animação suave na troca de abas */
 @keyframes fadeInSlide {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
@@ -108,12 +107,41 @@ main { padding: 20px; max-width: 600px; margin: auto; }
 h2 { color: var(--accent-light); margin-bottom: 15px; font-size: 1.2em; text-align: center; }
 
 form, .modal-content { display: flex; flex-direction: column; gap: 15px; }
-input, select { padding: 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 5px; font-size: 1em; transition: border-color 0.2s; }
+input, select { padding: 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 5px; font-size: 1em; transition: border-color 0.2s; width: 100%; }
 input:focus, select:focus { outline: none; border-color: var(--accent-light); }
 
 button { padding: 12px; background-color: var(--accent-light); color: var(--bg-color); border: none; font-size: 0.9em; cursor: pointer; border-radius: 5px; font-family: 'Sofachrome', sans-serif; transition: transform 0.1s ease, filter 0.2s; }
 button.btn-danger { background-color: var(--danger-color); color: white; }
 button.btn-success { background-color: var(--accent-dark); color: white; }
+
+/* Botão de Leitura de QR Code no Pátio */
+.btn-qr {
+    width: 100%;
+    margin-bottom: 15px;
+    background-color: transparent;
+    border: 2px dashed var(--accent-light);
+    color: var(--accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.72em;
+    padding: 14px 10px;
+}
+
+.btn-qr svg {
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+/* Container da Câmera QR Code */
+#qr-reader {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--accent-light);
+    background: #000;
+}
 
 .card {
     background: var(--card-bg);
@@ -133,7 +161,7 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
 .modal-content { background: var(--bg-color); padding: 20px; border: 2px solid var(--accent-light); border-radius: 10px; width: 90%; max-width: 400px; animation: fadeInSlide 0.3s ease-out; }
 
 .resumo-dia { font-size: 1.2em; color: var(--accent-light); margin-bottom: 20px; text-align: center; }
-#total-dia { color: var(--text-color); }
+#total-dia, #total-mes { color: var(--text-color); }
 
 .rodape-brabo {
     text-align: center;
@@ -143,7 +171,7 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
     font-family: sans-serif; 
 }
 
-/* Toast Notifications & Confirm Modal Styles */
+/* Toast Notifications */
 #toast-container {
     position: fixed;
     top: 20px;
