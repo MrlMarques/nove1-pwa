@@ -6,12 +6,11 @@ const taxas = { moto: 2.00, carro: 4.00, carro_grande: 6.00 };
 let veiculoAtual = null;
 let editandoId = null;
 let confirmAction = null;
+let html5QrCode = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
     document.getElementById('data-historico').valueAsDate = hoje;
-    document.getElementById('data-inicio').valueAsDate = hoje;
-    document.getElementById('data-fim').valueAsDate = hoje;
 
     const inputMes = document.getElementById('mes-relatorio');
     if (inputMes) {
@@ -21,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     atualizarPatio();
     atualizarHistorico();
-    calcularRelatorioPeriodo();
+    calcularRelatorioMes();
 
     // VÍNCULO BLINDADO: Garante que os botões do menu funcionem perfeitamente no mobile
     const botoesMenu = document.querySelectorAll('nav button');
@@ -35,29 +34,178 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// FILTRO POR MÊS FECHADO NA ABA RELATÓRIOS
-function filtrarPorMes() {
-    const mesInput = document.getElementById('mes-relatorio').value; // Formato "YYYY-MM"
-    if (!mesInput) return;
+// ==========================================
+// LEITOR DE QR CODE (DAR BAIXA PELA CÂMERA)
+// ==========================================
+function abrirLeitorQR() {
+    const modal = document.getElementById('modal-qr');
+    modal.style.display = 'flex';
 
-    const [ano, mes] = mesInput.split('-').map(Number);
-    const primeiroDia = `${ano}-${String(mes).padStart(2, '0')}-01`;
-    const ultimoDiaNumero = new Date(ano, mes, 0).getDate();
-    const ultimoDia = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDiaNumero).padStart(2, '0')}`;
+    html5QrCode = new Html5Qrcode("qr-reader");
+    const config = { fps: 10, qrbox: { width: 220, height: 220 } };
 
-    document.getElementById('data-inicio').value = primeiroDia;
-    document.getElementById('data-fim').value = ultimoDia;
-
-    calcularRelatorioPeriodo();
-    showToast(`Exibindo relatório de ${String(mes).padStart(2, '0')}/${ano}`, "info");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+            processarLeituraQR(decodedText);
+        },
+        (errorMessage) => {
+            // Ignora frames sem QR Code enquanto o operador mira a câmera
+        }
+    ).catch(err => {
+        console.error(err);
+        showToast("Não foi possível acessar a câmera. Verifique a permissão!", "error");
+        fecharLeitorQR();
+    });
 }
 
-function limparFiltroMes() {
-    const inputMes = document.getElementById('mes-relatorio');
-    if (inputMes) inputMes.value = '';
+function fecharLeitorQR() {
+    const modal = document.getElementById('modal-qr');
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            html5QrCode = null;
+            modal.style.display = 'none';
+        }).catch(() => {
+            html5QrCode = null;
+            modal.style.display = 'none';
+        });
+    } else {
+        modal.style.display = 'none';
+    }
 }
 
-// FUNÇÃO PARA ATUALIZAR A BADGE DE CONTAGEM NO MENU
+function processarLeituraQR(codigoLido) {
+    fecharLeitorQR();
+
+    // O ticket grava o padrão "NOVE1:ID" ou "NOVE1:ID|PLACA"
+    let idExtraido = null;
+    if (codigoLido.startsWith("NOVE1:")) {
+        const partes = codigoLido.replace("NOVE1:", "").split("|");
+        idExtraido = Number(partes[0]);
+    } else {
+        idExtraido = Number(codigoLido);
+    }
+
+    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    const veiculo = patio.find(v => v.id === idExtraido);
+
+    if (!veiculo) {
+        showToast("Ticket inválido ou veículo já recebeu baixa!", "error");
+        return;
+    }
+
+    showToast(`Ticket lido: ${veiculo.placa}`, "success");
+    abrirSaida(veiculo.id);
+}
+
+// ==========================================
+// RELATÓRIO MENSAL (APENAS POR MÊS)
+// ==========================================
+function calcularRelatorioMes() {
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const mesInput = document.getElementById('mes-relatorio').value; // "YYYY-MM"
+    const lista = document.getElementById('lista-mes');
+    lista.innerHTML = '';
+
+    if (!mesInput) {
+        document.getElementById('total-mes').innerText = "0.00";
+        return;
+    }
+
+    const [anoFiltro, mesFiltro] = mesInput.split('-'); // Ex: ["2026", "11"]
+    let totalMes = 0;
+
+    const filtrados = historico.filter(v => {
+        if (!v.data) return false;
+        const [d, m, a] = v.data.split('/');
+        return m === mesFiltro && a === anoFiltro;
+    });
+
+    if (filtrados.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado neste mês.</p>';
+    }
+
+    filtrados.forEach(v => {
+        totalMes += v.valorPago;
+        lista.innerHTML += `
+            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
+                    <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
+                </div>
+                <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
+            </div>
+        `;
+    });
+
+    document.getElementById('total-mes').innerText = totalMes.toFixed(2);
+}
+
+function gerarPDFMes() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const mesInput = document.getElementById('mes-relatorio').value;
+
+    if (!mesInput) return showToast("Selecione um mês para exportar, parceiro!", "error");
+
+    const [anoFiltro, mesFiltro] = mesInput.split('-');
+    const filtrados = historico.filter(v => {
+        if (!v.data) return false;
+        const [d, m, a] = v.data.split('/');
+        return m === mesFiltro && a === anoFiltro;
+    });
+
+    if (filtrados.length === 0) return showToast("Não há registros neste mês para exportar!", "error");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatorio Mensal Consolidado: ${mesFiltro}/${anoFiltro}`, 14, 28);
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    let y = 42;
+    let totalGeral = 0;
+    doc.setFont("helvetica", "bold");
+    doc.text("Data", 14, y);
+    doc.text("Placa", 50, y);
+    doc.text("Tipo", 85, y);
+    doc.text("Pgto", 125, y);
+    doc.text("Valor", 165, y);
+    y += 6;
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    filtrados.forEach(v => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        totalGeral += v.valorPago;
+        doc.text(v.data, 14, y);
+        doc.text(v.placa, 50, y);
+        doc.text(v.tipo.replace('_', ' '), 85, y);
+        doc.text(v.pagamento.toUpperCase(), 125, y);
+        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 165, y);
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(14, y, 196, y);
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`VALOR TOTAL DO MES (${mesFiltro}/${anoFiltro}): R$ ${totalGeral.toFixed(2)}`, 14, y);
+    doc.save(`relatorio-mensal-${mesFiltro}-${anoFiltro}.pdf`);
+    showToast("PDF Mensal gerado!", "success");
+}
+
+// ==========================================
+// CONTROLE DE PÁTIO, ENTRADA E SAÍDA
+// ==========================================
 function atualizarBadgePatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const badge = document.getElementById('badge-patio');
@@ -67,7 +215,6 @@ function atualizarBadgePatio() {
     }
 }
 
-// SISTEMA DE TOASTS E MODAL CUSTOMIZADO
 function showToast(mensagem, tipo = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -193,8 +340,17 @@ function excluirPatio(id) {
 function abrirSaida(id) {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     veiculoAtual = patio.find(v => v.id === id);
+    if (!veiculoAtual) return;
+
     document.getElementById('modal-placa').innerText = veiculoAtual.placa;
+    document.getElementById('desconto').value = '';
+    
+    // Já puxa a hora atual e calcula o valor automaticamente (agiliza a baixa por QR Code)
+    const horaAtual = new Date().toTimeString().substring(0, 5);
+    document.getElementById('hora-saida').value = horaAtual;
+    
     document.getElementById('modal-saida').style.display = 'flex';
+    calcularValor();
 }
 
 function fecharModal() {
@@ -251,7 +407,7 @@ function finalizarSaida() {
     fecharModal();
     atualizarPatio();
     atualizarHistorico();
-    calcularRelatorioPeriodo();
+    calcularRelatorioMes();
     
     showToast(`Saída concluída! R$ ${calc.total.toFixed(2)} pro caixa.`, "success");
     showTab('historico', document.querySelectorAll('nav button')[2]);
@@ -299,112 +455,9 @@ function excluirHistorico(id) {
         historico = historico.filter(v => v.id !== id);
         localStorage.setItem('nove1_historico', JSON.stringify(historico));
         atualizarHistorico();
-        calcularRelatorioPeriodo();
+        calcularRelatorioMes();
         showToast("Registro apagado!", "success");
     });
-}
-
-function calcularRelatorioPeriodo() {
-    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const inicioStr = document.getElementById('data-inicio').value;
-    const fimStr = document.getElementById('data-fim').value;
-    if (!inicioStr || !fimStr) return;
-
-    const dataInicio = new Date(inicioStr + 'T00:00:00');
-    const dataFim = new Date(fimStr + 'T23:59:59');
-    const lista = document.getElementById('lista-periodo');
-    lista.innerHTML = '';
-    let totalPeriodo = 0;
-
-    const filtrados = historico.filter(v => {
-        const [d, m, a] = v.data.split('/');
-        const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
-        return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
-    });
-
-    if (filtrados.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado neste período.</p>';
-    }
-
-    filtrados.forEach(v => {
-        totalPeriodo += v.valorPago;
-        lista.innerHTML += `
-            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
-                    <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
-                </div>
-                <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
-            </div>
-        `;
-    });
-
-    document.getElementById('total-periodo').innerText = totalPeriodo.toFixed(2);
-}
-
-function gerarPDFPeriodo() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const inicioStr = document.getElementById('data-inicio').value;
-    const fimStr = document.getElementById('data-fim').value;
-
-    if (!inicioStr || !fimStr) return showToast("Selecione a data inicial e final, parceiro!", "error");
-
-    const dataInicio = new Date(inicioStr + 'T00:00:00');
-    const dataFim = new Date(fimStr + 'T23:59:59');
-    const [anoI, mesI, diaI] = inicioStr.split('-');
-    const [anoF, mesF, diaF] = fimStr.split('-');
-    
-    const filtrados = historico.filter(v => {
-        const [d, m, a] = v.data.split('/');
-        const dataVeiculo = new Date(`${a}-${m}-${d}T12:00:00`);
-        return dataVeiculo >= dataInicio && dataVeiculo <= dataFim;
-    });
-
-    if (filtrados.length === 0) return showToast("Não há registros neste período para exportar!", "error");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio Consolidado por Periodo: ${diaI}/${mesI}/${anoI} ate ${diaF}/${mesF}/${anoF}`, 14, 28);
-    doc.setLineWidth(0.5);
-    doc.line(14, 32, 196, 32);
-
-    let y = 42;
-    let totalGeral = 0;
-    doc.setFont("helvetica", "bold");
-    doc.text("Data", 14, y);
-    doc.text("Placa", 50, y);
-    doc.text("Tipo", 85, y);
-    doc.text("Pgto", 125, y);
-    doc.text("Valor", 165, y);
-    y += 6;
-    doc.line(14, y, 196, y);
-    y += 8;
-
-    doc.setFont("helvetica", "normal");
-    filtrados.forEach(v => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        totalGeral += v.valorPago;
-        doc.text(v.data, 14, y);
-        doc.text(v.placa, 50, y);
-        doc.text(v.tipo.replace('_', ' '), 85, y);
-        doc.text(v.pagamento.toUpperCase(), 125, y);
-        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 165, y);
-        y += 8;
-    });
-
-    y += 5;
-    doc.line(14, y, 196, y);
-    y += 10;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`VALOR TOTAL DO PERIODO: R$ ${totalGeral.toFixed(2)}`, 14, y);
-    doc.save(`relatorio-periodo-${diaI}-${mesI}-${anoI}-a-${diaF}-${mesF}-${anoF}.pdf`);
-    showToast("PDF de Período gerado!", "success");
 }
 
 function gerarPDFDia() {
@@ -465,6 +518,9 @@ function gerarPDFDia() {
     showToast("PDF do Dia gerado!", "success");
 }
 
+// ==========================================
+// TICKET TÉRMICO DE ENTRADA COM QR CODE
+// ==========================================
 function imprimirTicketEntrada() {
     const placaInput = document.getElementById('placa');
     const tipoSelect = document.getElementById('tipo');
@@ -479,6 +535,7 @@ function imprimirTicketEntrada() {
     }
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    let idVeiculo = editandoId ? editandoId : Date.now();
 
     if (editandoId) {
         patio = patio.map(v => {
@@ -490,18 +547,27 @@ function imprimirTicketEntrada() {
         editandoId = null;
         document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
     } else {
-        const veiculo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+        const veiculo = { id: idVeiculo, placa, tipo, horaEntrada, status: 'patio' };
         patio.push(veiculo);
     }
 
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
     atualizarPatio();
 
+    // Gera a imagem Base64 do QR Code contendo o ID do registro
+    const qr = new QRious({
+        value: `NOVE1:${idVeiculo}|${placa}`,
+        size: 160,
+        level: 'M'
+    });
+    const qrDataUrl = qr.toDataURL();
+
     let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [58, 100] });
+    // Altura ajustada para 115mm para comportar o QR Code com folga
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [58, 115] });
 
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
@@ -514,15 +580,19 @@ function imprimirTicketEntrada() {
 
     doc.setFont("courier", "normal");
     doc.setFontSize(8);
-    let y = 28;
+    let y = 27;
     doc.text(`Data: ${dataHoje}`, 3, y); y += 5;
     doc.text(`Placa: ${placa}`, 3, y); y += 5;
     doc.text(`Tipo: ${tipoFormatado}`, 3, y); y += 5;
     doc.text(`Entrada: ${horaEntrada}`, 3, y);
-    
-    y += 7;
-    doc.text("--------------------------------", 29, y, { align: "center" }); y += 5;
-    doc.text("Conserve este ticket", 29, y, { align: "center" }); y += 4;
+
+    // Insere o QR Code centralizado (x=16, largura=26mm, altura=26mm)
+    y += 4;
+    doc.addImage(qrDataUrl, 'PNG', 16, y, 26, 26);
+    y += 30;
+
+    doc.text("--------------------------------", 29, y, { align: "center" }); y += 4;
+    doc.text("Apresente este QR Code", 29, y, { align: "center" }); y += 4;
     doc.text("para a retirada.", 29, y, { align: "center" }); y += 5;
     doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
 
@@ -539,7 +609,7 @@ function imprimirTicketEntrada() {
 
     document.getElementById('form-entrada').reset();
     horaEntradaInput.type = 'text'; 
-    showToast("Ticket gerado e veículo salvo com sucesso!", "success");
+    showToast("Ticket com QR Code gerado!", "success");
     showTab('patio', document.querySelectorAll('nav button')[1]);
 }
 
@@ -547,7 +617,7 @@ function limparHistorico() {
     showConfirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!", () => {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
-        calcularRelatorioPeriodo();
+        calcularRelatorioMes();
         showToast("Histórico zerado com sucesso!", "success");
     });
 }
