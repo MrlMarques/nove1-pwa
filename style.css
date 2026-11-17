@@ -27,40 +27,64 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
 }
 
 header { background-color: var(--card-bg); padding: 12px; text-align: center; border-bottom: 3px solid var(--accent-light); }
-.logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
+.logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 12px; border-radius: 4px; }
 
-/* Menu no topo com 5 abas ajustadas para caber perfeitamente no mobile */
-nav {
-    display: flex;
-    justify-content: space-between;
-    gap: 2px;
+/* Menu Responsivo Profissional (Organizado em grade para encaixar as 5 abas sem cortar) */
+.menu-navegacao {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 botões na primeira linha */
+    gap: 4px;
     width: 100%;
+}
+
+/* Faz os dois últimos botões (Histórico e Relatórios) ocuparem a linha de baixo perfeitamente centralizados */
+.menu-navegacao button:nth-child(4),
+.menu-navegacao button:nth-child(5) {
+    grid-column: span 1.5; /* Ajuste visual distribuído */
+}
+
+/* Redefinição limpa para telas menores */
+@media (max-width: 480px) {
+    .menu-navegacao {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .menu-navegacao button:nth-child(4) {
+        grid-column: 1 / span 1;
+    }
+    .menu-navegacao button:nth-child(5) {
+        grid-column: 2 / span 2;
+    }
 }
 
 nav button { 
     background: none; 
     border: 1px solid var(--accent-light); 
     color: var(--accent-light); 
-    padding: 7px 1px; 
+    padding: 10px 4px; 
     cursor: pointer; 
-    border-radius: 5px; 
-    font-size: 0.31em; 
-    flex: 1; 
+    border-radius: 6px; 
+    font-size: 0.42em; /* Tamanho ajustado para legibilidade perfeita */
     text-align: center;
     display: flex;
     flex-direction: column; 
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     position: relative;
+    min-height: 52px;
     transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+nav button span {
+    letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 nav button svg {
     flex-shrink: 0;
     stroke: currentColor;
-    width: 13px;
-    height: 13px;
+    width: 16px;
+    height: 16px;
     pointer-events: none;
 }
 
@@ -79,9 +103,9 @@ nav button:hover, nav button.active {
     border-radius: 8px;
     font-family: sans-serif;
     position: absolute;
-    top: 3px;
-    right: 3px;
-    min-width: 13px;
+    top: 4px;
+    right: 4px;
+    min-width: 14px;
     text-align: center;
 }
 
