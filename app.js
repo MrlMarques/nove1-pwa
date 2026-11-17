@@ -8,6 +8,8 @@ if ('serviceWorker' in navigator) {
 const taxas = { moto: 2.00, carro: 4.00, carro_grande: 6.00 };
 let veiculoAtual = null;
 let editandoId = null;
+let editandoMensalistaId = null;
+let mensalistaParaBaixa = null;
 let confirmAction = null;
 let html5QrCode = null;
 let stroboInterval = null;
@@ -17,28 +19,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
     document.getElementById('data-historico').valueAsDate = hoje;
 
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     const inputMes = document.getElementById('mes-relatorio');
     if (inputMes) {
-        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
         inputMes.value = mesAtual;
     }
     
     // Carrega o cache local na hora para não travar a tela
     atualizarPatio();
+    atualizarMensalistas();
     atualizarHistorico();
     calcularRelatorioMes();
 
     // Puxa os dados atualizados do Google Planilhas em seguida
     sincronizarComNuvem();
 
-    // VÍNCULO BLINDADO DO MENU
+    // VÍNCULO BLINDADO DO MENU POR data-tab
     const botoesMenu = document.querySelectorAll('nav button');
-    const abasIds = ['entrada', 'patio', 'historico', 'relatorios'];
-
-    botoesMenu.forEach((btn, index) => {
+    botoesMenu.forEach((btn) => {
         btn.onclick = null;
         btn.addEventListener('click', () => {
-            showTab(abasIds[index], btn);
+            const tabId = btn.getAttribute('data-tab');
+            showTab(tabId, btn);
         });
     });
 
@@ -46,6 +48,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnAbrirQr = document.getElementById('btn-abrir-qr');
     if (btnAbrirQr) {
         btnAbrirQr.addEventListener('click', abrirLeitorQR);
+    }
+
+    // MÁSCARA DE PLACA NO CADASTRO DE MENSALISTA
+    const inputPlacaMensalista = document.getElementById('mensalista-placa');
+    if (inputPlacaMensalista) {
+        inputPlacaMensalista.addEventListener('input', function() {
+            let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
+            if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 7);
+            this.value = val;
+        });
     }
 });
 
@@ -66,8 +78,11 @@ async function sincronizarComNuvem(silencioso = true) {
         if (dados.status === "ok") {
             localStorage.setItem('nove1_patio', JSON.stringify(dados.patio || []));
             localStorage.setItem('nove1_historico', JSON.stringify(dados.historico || []));
+            localStorage.setItem('nove1_mensalistas', JSON.stringify(dados.mensalistas || []));
+            localStorage.setItem('nove1_pagamentos_mensalistas', JSON.stringify(dados.pagamentosMensalistas || []));
 
             atualizarPatio();
+            atualizarMensalistas();
             atualizarHistorico();
             calcularRelatorioMes();
 
@@ -93,6 +108,422 @@ async function enviarParaPlanilha(payload) {
         console.error("Erro ao gravar na planilha:", erro);
         showToast("Salvo no aparelho (sem conexão com a planilha).", "error");
     }
+}
+
+// ==========================================
+// GESTÃO DE MENSALISTAS (CADASTRO E BAIXA)
+// ==========================================
+document.getElementById('form-mensalista').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = document.getElementById('mensalista-nome').value.trim();
+    const placa = document.getElementById('mensalista-placa').value.toUpperCase();
+    const tipo = document.getElementById('mensalista-tipo').value;
+    const diaVencimento = Number(document.getElementById('mensalista-vencimento').value);
+    const valorMensal = Number(document.getElementById('mensalista-valor').value);
+
+    let mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
+    let isEdit = editandoMensalistaId !== null;
+    let mensalistaSalvo = null;
+
+    if (isEdit) {
+        mensalistaSalvo = {
+            id: editandoMensalistaId,
+            nome,
+            placa,
+            tipo,
+            diaVencimento,
+            valorMensal
+        };
+        mensalistas = mensalistas.map(m => m.id === editandoMensalistaId ? mensalistaSalvo : m);
+        editandoMensalistaId = null;
+        document.getElementById('btn-salvar-mensalista').innerText = "Cadastrar Mensalista";
+    } else {
+        mensalistaSalvo = {
+            id: Date.now(),
+            nome,
+            placa,
+            tipo,
+            diaVencimento,
+            valorMensal
+        };
+        mensalistas.push(mensalistaSalvo);
+    }
+
+    localStorage.setItem('nove1_mensalistas', JSON.stringify(mensalistas));
+    e.target.reset();
+    atualizarMensalistas();
+
+    enviarParaPlanilha({
+        acao: isEdit ? "editMensalista" : "addMensalista",
+        mensalista: mensalistaSalvo
+    });
+
+    showToast(isEdit ? "Mensalista atualizado!" : "Mensalista cadastrado!", "success");
+});
+
+function obterMesAtualFormatado() {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function verificarPagamentoMes(mensalistaId, mesRef) {
+    const pagamentos = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
+    return pagamentos.find(p => Number(p.mensalistaId) === Number(mensalistaId) && p.mesReferencia === mesRef);
+}
+
+function atualizarMensalistas() {
+    const mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
+    const lista = document.getElementById('lista-mensalistas');
+    if (!lista) return;
+    lista.innerHTML = '';
+
+    if (mensalistas.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 15px;">Nenhum mensalista cadastrado ainda.</p>';
+        return;
+    }
+
+    const mesAtual = obterMesAtualFormatado();
+
+    mensalistas.forEach(m => {
+        const pagoNesteMes = verificarPagamentoMes(m.id, mesAtual);
+        const badgeStatus = pagoNesteMes
+            ? `<span class="status-badge status-pago">PAGO (${mesAtual.split('-').reverse().join('/')})</span>`
+            : `<span class="status-badge status-pendente">PENDENTE (Venc. dia ${m.diaVencimento})</span>`;
+
+        lista.innerHTML += `
+            <div class="card card-mensalista">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <div>
+                        <strong style="font-size: 1.05em; color: var(--qr-color);">${m.nome}</strong><br>
+                        <strong style="color: var(--accent-light);">${m.placa}</strong> — <span style="text-transform: capitalize;">${m.tipo.replace('_', ' ')}</span><br>
+                        <small style="color: #aaa;">Mensalidade: R$ ${Number(m.valorMensal).toFixed(2)} | Vencimento: Dia ${m.diaVencimento}</small>
+                    </div>
+                    <div>${badgeStatus}</div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" onclick="abrirModalBaixaMensalista(${m.id})" style="background: var(--success-color); color: white;">DAR BAIXA</button>
+                    <button type="button" onclick="editarMensalista(${m.id})" style="background: var(--edit-color); color: var(--bg-color);">EDITAR</button>
+                    <button type="button" onclick="excluirMensalista(${m.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function editarMensalista(id) {
+    const mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
+    const m = mensalistas.find(item => item.id === id);
+    if (!m) return;
+
+    document.getElementById('mensalista-nome').value = m.nome;
+    document.getElementById('mensalista-placa').value = m.placa;
+    document.getElementById('mensalista-tipo').value = m.tipo;
+    document.getElementById('mensalista-vencimento').value = m.diaVencimento;
+    document.getElementById('mensalista-valor').value = m.valorMensal;
+
+    editandoMensalistaId = id;
+    document.getElementById('btn-salvar-mensalista').innerText = "Salvar Edição";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function excluirMensalista(id) {
+    showConfirm("Certeza que quer remover este mensalista do cadastro?", () => {
+        let mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
+        mensalistas = mensalistas.filter(m => m.id !== id);
+        localStorage.setItem('nove1_mensalistas', JSON.stringify(mensalistas));
+        atualizarMensalistas();
+
+        enviarParaPlanilha({ acao: "deleteMensalista", id: id });
+        showToast("Mensalista removido!", "success");
+    });
+}
+
+function abrirModalBaixaMensalista(id) {
+    const mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
+    const m = mensalistas.find(item => item.id === id);
+    if (!m) return;
+
+    mensalistaParaBaixa = m;
+    document.getElementById('baixa-mensalista-info').innerHTML = `<strong>${m.nome}</strong> — Placa: <strong>${m.placa}</strong>`;
+    document.getElementById('baixa-mensalista-mes').value = obterMesAtualFormatado();
+    document.getElementById('baixa-mensalista-valor').value = Number(m.valorMensal).toFixed(2);
+    document.getElementById('baixa-mensalista-pagamento').value = "pix";
+
+    document.getElementById('modal-baixa-mensalista').style.display = 'flex';
+}
+
+function fecharModalBaixaMensalista() {
+    document.getElementById('modal-baixa-mensalista').style.display = 'none';
+    mensalistaParaBaixa = null;
+}
+
+function confirmarBaixaMensalista() {
+    if (!mensalistaParaBaixa) return;
+
+    const mesRef = document.getElementById('baixa-mensalista-mes').value;
+    const valorPago = Number(document.getElementById('baixa-mensalista-valor').value);
+    const pagamento = document.getElementById('baixa-mensalista-pagamento').value;
+
+    if (!mesRef || isNaN(valorPago) || valorPago <= 0) {
+        return showToast("Preencha o mês de referência e um valor válido!", "error");
+    }
+
+    const jaPago = verificarPagamentoMes(mensalistaParaBaixa.id, mesRef);
+    if (jaPago) {
+        return showToast(`O mês ${mesRef.split('-').reverse().join('/')} já está pago para este cliente!`, "error");
+    }
+
+    const pagamentoObj = {
+        id: Date.now(),
+        mensalistaId: mensalistaParaBaixa.id,
+        nome: mensalistaParaBaixa.nome,
+        placa: mensalistaParaBaixa.placa,
+        mesReferencia: mesRef,
+        dataPagamento: new Date().toLocaleDateString('pt-BR'),
+        pagamento: pagamento,
+        valorPago: valorPago
+    };
+
+    let pagamentos = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
+    pagamentos.push(pagamentoObj);
+    localStorage.setItem('nove1_pagamentos_mensalistas', JSON.stringify(pagamentos));
+
+    fecharModalBaixaMensalista();
+    atualizarMensalistas();
+    calcularRelatorioMes();
+
+    enviarParaPlanilha({
+        acao: "pagarMensalista",
+        pagamentoObj: pagamentoObj
+    });
+
+    showToast(`Baixa confirmada! R$ ${valorPago.toFixed(2)} registrado em Mensalistas.`, "success");
+}
+
+function excluirPagamentoMensalista(id) {
+    showConfirm("Deseja estornar/apagar este pagamento de mensalidade?", () => {
+        let pagamentos = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
+        pagamentos = pagamentos.filter(p => p.id !== id);
+        localStorage.setItem('nove1_pagamentos_mensalistas', JSON.stringify(pagamentos));
+        atualizarMensalistas();
+        calcularRelatorioMes();
+
+        enviarParaPlanilha({ acao: "deletePagamentoMensalista", id: id });
+        showToast("Pagamento de mensalista estornado!", "success");
+    });
+}
+
+// ==========================================
+// RELATÓRIO MENSAL (SEPARADO: AVULSO VS MENSALISTAS)
+// ==========================================
+function calcularRelatorioMes() {
+    const historicoAvulso = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const pagamentosMensalistas = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
+    const mesInput = document.getElementById('mes-relatorio').value;
+
+    const listaAvulso = document.getElementById('lista-mes-avulso');
+    const listaMensalistas = document.getElementById('lista-mes-mensalistas');
+    if (!listaAvulso || !listaMensalistas) return;
+
+    listaAvulso.innerHTML = '';
+    listaMensalistas.innerHTML = '';
+
+    if (!mesInput) {
+        document.getElementById('total-mes-avulso').innerText = "0.00";
+        document.getElementById('total-mes-mensalistas').innerText = "0.00";
+        document.getElementById('total-mes').innerText = "0.00";
+        return;
+    }
+
+    const [anoFiltro, mesFiltro] = mesInput.split('-');
+    let totalAvulso = 0;
+    let totalMensalistas = 0;
+
+    // 1. Filtra Avulso / Rotativo pela data (dd/mm/aaaa)
+    const filtradosAvulso = historicoAvulso.filter(v => {
+        if (!v.data) return false;
+        const [d, m, a] = v.data.split('/');
+        return m === mesFiltro && a === anoFiltro;
+    });
+
+    document.getElementById('qtd-mes-avulso').innerText = filtradosAvulso.length;
+
+    if (filtradosAvulso.length === 0) {
+        listaAvulso.innerHTML = '<p style="text-align: center; color: #777; font-size: 0.9em;">Nenhum atendimento avulso neste mês.</p>';
+    } else {
+        filtradosAvulso.forEach(v => {
+            totalAvulso += Number(v.valorPago);
+            listaAvulso.innerHTML += `
+                <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})<br>
+                        <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
+                    </div>
+                    <strong style="color: var(--success-color);">R$ ${Number(v.valorPago).toFixed(2)}</strong>
+                </div>
+            `;
+        });
+    }
+
+    // 2. Filtra Pagamentos de Mensalistas pelo Mês de Referência (aaaa-mm)
+    const filtradosMensalistas = pagamentosMensalistas.filter(p => p.mesReferencia === mesInput);
+
+    document.getElementById('qtd-mes-mensalistas').innerText = filtradosMensalistas.length;
+
+    if (filtradosMensalistas.length === 0) {
+        listaMensalistas.innerHTML = '<p style="text-align: center; color: #777; font-size: 0.9em;">Nenhuma mensalidade paga referente a este mês.</p>';
+    } else {
+        filtradosMensalistas.forEach(p => {
+            totalMensalistas += Number(p.valorPago);
+            listaMensalistas.innerHTML += `
+                <div class="card card-mensalista" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: var(--qr-color);">${p.nome}</strong> — <strong style="color: var(--accent-light);">${p.placa}</strong><br>
+                        <small style="color: #aaa;">Pago em ${p.dataPagamento} (${p.pagamento.toUpperCase()})</small>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong style="color: var(--success-color);">R$ ${Number(p.valorPago).toFixed(2)}</strong>
+                        <button onclick="excluirPagamentoMensalista(${p.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75em;">X</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    const totalGeral = totalAvulso + totalMensalistas;
+    document.getElementById('total-mes-avulso').innerText = totalAvulso.toFixed(2);
+    document.getElementById('total-mes-mensalistas').innerText = totalMensalistas.toFixed(2);
+    document.getElementById('total-mes').innerText = totalGeral.toFixed(2);
+}
+
+function gerarPDFMes() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const historicoAvulso = JSON.parse(localStorage.getItem('nove1_historico')) || [];
+    const pagamentosMensalistas = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
+    const mesInput = document.getElementById('mes-relatorio').value;
+
+    if (!mesInput) return showToast("Selecione um mês para exportar, parceiro!", "error");
+
+    const [anoFiltro, mesFiltro] = mesInput.split('-');
+
+    const filtradosAvulso = historicoAvulso.filter(v => {
+        if (!v.data) return false;
+        const [d, m, a] = v.data.split('/');
+        return m === mesFiltro && a === anoFiltro;
+    });
+
+    const filtradosMensalistas = pagamentosMensalistas.filter(p => p.mesReferencia === mesInput);
+
+    if (filtradosAvulso.length === 0 && filtradosMensalistas.length === 0) {
+        return showToast("Não há registros (nem avulso nem mensalista) neste mês!", "error");
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatorio Mensal Consolidado: ${mesFiltro}/${anoFiltro}`, 14, 28);
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    let y = 42;
+    let totalAvulso = 0;
+    let totalMensalistas = 0;
+
+    // --- BLOCO 1: AVULSO / ROTATIVO ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("1. ATENDIMENTOS AVULSOS / ROTATIVO", 14, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    if (filtradosAvulso.length === 0) {
+        doc.setFont("helvetica", "italic");
+        doc.text("Nenhum registro avulso neste mes.", 14, y);
+        y += 10;
+    } else {
+        doc.text("Data", 14, y);
+        doc.text("Placa", 48, y);
+        doc.text("Tipo", 82, y);
+        doc.text("Pgto", 125, y);
+        doc.text("Valor", 165, y);
+        y += 5;
+        doc.line(14, y, 196, y);
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        filtradosAvulso.forEach(v => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            const val = Number(v.valorPago);
+            totalAvulso += val;
+            doc.text(v.data, 14, y);
+            doc.text(v.placa, 48, y);
+            doc.text(v.tipo.replace('_', ' '), 82, y);
+            doc.text(v.pagamento.toUpperCase(), 125, y);
+            doc.text(`R$ ${val.toFixed(2)}`, 165, y);
+            y += 7;
+        });
+
+        y += 2;
+        doc.setFont("helvetica", "bold");
+        doc.text(`Subtotal Avulso / Rotativo: R$ ${totalAvulso.toFixed(2)}`, 14, y);
+        y += 12;
+    }
+
+    // --- BLOCO 2: MENSALISTAS ---
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("2. MENSALISTAS PAGOS", 14, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    if (filtradosMensalistas.length === 0) {
+        doc.setFont("helvetica", "italic");
+        doc.text("Nenhuma mensalidade paga neste mes.", 14, y);
+        y += 10;
+    } else {
+        doc.text("Dt. Pgto", 14, y);
+        doc.text("Cliente", 45, y);
+        doc.text("Placa", 105, y);
+        doc.text("Pgto", 138, y);
+        doc.text("Valor", 165, y);
+        y += 5;
+        doc.line(14, y, 196, y);
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        filtradosMensalistas.forEach(p => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            const val = Number(p.valorPago);
+            totalMensalistas += val;
+            doc.text(p.dataPagamento, 14, y);
+            doc.text(p.nome.substring(0, 26), 45, y);
+            doc.text(p.placa, 105, y);
+            doc.text(p.pagamento.toUpperCase(), 138, y);
+            doc.text(`R$ ${val.toFixed(2)}`, 165, y);
+            y += 7;
+        });
+
+        y += 2;
+        doc.setFont("helvetica", "bold");
+        doc.text(`Subtotal Mensalistas: R$ ${totalMensalistas.toFixed(2)}`, 14, y);
+        y += 12;
+    }
+
+    // --- RESUMO FINAL CONSOLIDADO ---
+    if (y > 255) { doc.addPage(); y = 20; }
+    doc.line(14, y, 196, y);
+    y += 9;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    const totalGeral = totalAvulso + totalMensalistas;
+    doc.text(`FATURAMENTO TOTAL (${mesFiltro}/${anoFiltro}): R$ ${totalGeral.toFixed(2)}`, 14, y);
+
+    doc.save(`relatorio-mensal-${mesFiltro}-${anoFiltro}.pdf`);
+    showToast("PDF Mensal gerado com sucesso!", "success");
 }
 
 // ==========================================
@@ -259,110 +690,7 @@ function processarLeituraQR(codigoLido) {
 }
 
 // ==========================================
-// RELATÓRIO MENSAL (APENAS POR MÊS)
-// ==========================================
-function calcularRelatorioMes() {
-    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const mesInput = document.getElementById('mes-relatorio').value;
-    const lista = document.getElementById('lista-mes');
-    lista.innerHTML = '';
-
-    if (!mesInput) {
-        document.getElementById('total-mes').innerText = "0.00";
-        return;
-    }
-
-    const [anoFiltro, mesFiltro] = mesInput.split('-');
-    let totalMes = 0;
-
-    const filtrados = historico.filter(v => {
-        if (!v.data) return false;
-        const [d, m, a] = v.data.split('/');
-        return m === mesFiltro && a === anoFiltro;
-    });
-
-    if (filtrados.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado neste mês.</p>';
-    }
-
-    filtrados.forEach(v => {
-        totalMes += v.valorPago;
-        lista.innerHTML += `
-            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
-                    <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
-                </div>
-                <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
-            </div>
-        `;
-    });
-
-    document.getElementById('total-mes').innerText = totalMes.toFixed(2);
-}
-
-function gerarPDFMes() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const mesInput = document.getElementById('mes-relatorio').value;
-
-    if (!mesInput) return showToast("Selecione um mês para exportar, parceiro!", "error");
-
-    const [anoFiltro, mesFiltro] = mesInput.split('-');
-    const filtrados = historico.filter(v => {
-        if (!v.data) return false;
-        const [d, m, a] = v.data.split('/');
-        return m === mesFiltro && a === anoFiltro;
-    });
-
-    if (filtrados.length === 0) return showToast("Não há registros neste mês para exportar!", "error");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio Mensal Consolidado: ${mesFiltro}/${anoFiltro}`, 14, 28);
-    doc.setLineWidth(0.5);
-    doc.line(14, 32, 196, 32);
-
-    let y = 42;
-    let totalGeral = 0;
-    doc.setFont("helvetica", "bold");
-    doc.text("Data", 14, y);
-    doc.text("Placa", 50, y);
-    doc.text("Tipo", 85, y);
-    doc.text("Pgto", 125, y);
-    doc.text("Valor", 165, y);
-    y += 6;
-    doc.line(14, y, 196, y);
-    y += 8;
-
-    doc.setFont("helvetica", "normal");
-    filtrados.forEach(v => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        totalGeral += v.valorPago;
-        doc.text(v.data, 14, y);
-        doc.text(v.placa, 50, y);
-        doc.text(v.tipo.replace('_', ' '), 85, y);
-        doc.text(v.pagamento.toUpperCase(), 125, y);
-        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 165, y);
-        y += 8;
-    });
-
-    y += 5;
-    doc.line(14, y, 196, y);
-    y += 10;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`VALOR TOTAL DO MES (${mesFiltro}/${anoFiltro}): R$ ${totalGeral.toFixed(2)}`, 14, y);
-    doc.save(`relatorio-mensal-${mesFiltro}-${anoFiltro}.pdf`);
-    showToast("PDF Mensal gerado!", "success");
-}
-
-// ==========================================
-// CONTROLE DE PÁTIO, ENTRADA E SAÍDA
+// CONTROLE DE PÁTIO, ENTRADA E SAÍDA (AVULSO)
 // ==========================================
 function atualizarBadgePatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
@@ -411,7 +739,13 @@ function showTab(tabId, btnElement) {
     
     const abaAlvo = document.getElementById(tabId);
     if (abaAlvo) abaAlvo.classList.add('active');
-    if (btnElement) btnElement.classList.add('active');
+    
+    if (btnElement) {
+        btnElement.classList.add('active');
+    } else {
+        const btnCorrespondente = document.querySelector(`nav button[data-tab="${tabId}"]`);
+        if (btnCorrespondente) btnCorrespondente.classList.add('active');
+    }
 }
 
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
@@ -445,7 +779,7 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     });
 
     showToast(isEdit ? "Entrada atualizada!" : "Veículo registrado no pátio!", "success");
-    showTab('patio', document.querySelectorAll('nav button')[1]);
+    showTab('patio');
 });
 
 function atualizarPatio() {
@@ -491,7 +825,7 @@ function editarPatio(id) {
 
     editandoId = id;
     document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Edição";
-    showTab('entrada', document.querySelectorAll('nav button')[0]);
+    showTab('entrada');
 }
 
 function excluirPatio(id) {
@@ -585,7 +919,7 @@ function finalizarSaida() {
     });
     
     showToast(`Saída concluída! R$ ${calc.total.toFixed(2)} pro caixa.`, "success");
-    showTab('historico', document.querySelectorAll('nav button')[2]);
+    showTab('historico');
 }
 
 function atualizarHistorico() {
@@ -602,19 +936,19 @@ function atualizarHistorico() {
     const filtrados = historico.filter(v => v.data === dataFiltro);
 
     if (filtrados.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro encontrado nesta data.</p>';
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro avulso encontrado nesta data.</p>';
     }
 
     filtrados.forEach(v => {
-        totalDia += v.valorPago;
+        totalDia += Number(v.valorPago);
         lista.innerHTML += `
             <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento})<br>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})<br>
                     <small style="color: #aaa;">${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <strong style="color: var(--success-color);">R$ ${v.valorPago.toFixed(2)}</strong>
+                    <strong style="color: var(--success-color);">R$ ${Number(v.valorPago).toFixed(2)}</strong>
                     <button onclick="excluirHistorico(${v.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">X</button>
                 </div>
             </div>
@@ -625,7 +959,7 @@ function atualizarHistorico() {
 }
 
 function excluirHistorico(id) {
-    showConfirm("Tem certeza que quer apagar este registro do histórico?", () => {
+    showConfirm("Tem certeza que quer apagar este registro do histórico avulso?", () => {
         let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
         historico = historico.filter(v => v.id !== id);
         localStorage.setItem('nove1_historico', JSON.stringify(historico));
@@ -649,14 +983,14 @@ function gerarPDFDia() {
     const dataFiltro = `${dia}/${mes}/${ano}`;
     const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
 
-    if (veiculosDoDia.length === 0) return showToast("Não há registros para exportar nesta data!", "error");
+    if (veiculosDoDia.length === 0) return showToast("Não há registros avulsos para exportar nesta data!", "error");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio de Fechamento de Caixa - Data: ${dataFiltro}`, 14, 28);
+    doc.text(`Relatorio Diario Avulso / Rotativo - Data: ${dataFiltro}`, 14, 28);
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
@@ -675,12 +1009,13 @@ function gerarPDFDia() {
     doc.setFont("helvetica", "normal");
     veiculosDoDia.forEach(v => {
         if (y > 270) { doc.addPage(); y = 20; }
-        totalGeral += v.valorPago;
+        const val = Number(v.valorPago);
+        totalGeral += val;
         doc.text(v.placa, 14, y);
         doc.text(v.tipo.replace('_', ' '), 50, y);
         doc.text(`${v.horaEntrada} - ${v.horaSaida}`, 90, y);
         doc.text(v.pagamento.toUpperCase(), 130, y);
-        doc.text(`R$ ${v.valorPago.toFixed(2)}`, 170, y);
+        doc.text(`R$ ${val.toFixed(2)}`, 170, y);
         y += 8;
     });
 
@@ -689,9 +1024,9 @@ function gerarPDFDia() {
     y += 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text(`VALOR TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
+    doc.text(`VALOR TOTAL AVULSO DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
 
-    doc.save(`relatorio-nove1-${dia}-${mes}-${ano}.pdf`);
+    doc.save(`relatorio-avulso-${dia}-${mes}-${ano}.pdf`);
     showToast("PDF do Dia gerado!", "success");
 }
 
@@ -792,16 +1127,16 @@ function imprimirTicketEntrada() {
     document.getElementById('form-entrada').reset();
     horaEntradaInput.type = 'text'; 
     showToast("Ticket com QR Code gerado!", "success");
-    showTab('patio', document.querySelectorAll('nav button')[1]);
+    showTab('patio');
 }
 
 function limparHistorico() {
-    showConfirm("Certeza que quer apagar o histórico inteiro? Isso zera tudo!", () => {
+    showConfirm("Certeza que quer apagar o histórico avulso inteiro? Isso zera tudo!", () => {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
         calcularRelatorioMes();
 
         enviarParaPlanilha({ acao: "clearHistorico" });
-        showToast("Histórico zerado com sucesso!", "success");
+        showToast("Histórico avulso zerado com sucesso!", "success");
     });
 }
