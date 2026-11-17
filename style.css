@@ -26,14 +26,14 @@ h1, h2, h3, nav button, button, .resumo-dia, #valor-calculado {
     font-family: 'Sofachrome', sans-serif; 
 }
 
-header { background-color: var(--card-bg); padding: 15px; text-align: center; border-bottom: 3px solid var(--accent-light); }
+header { background-color: var(--card-bg); padding: 12px; text-align: center; border-bottom: 3px solid var(--accent-light); }
 .logo-header { width: 100%; max-width: 100%; height: auto; display: block; margin-bottom: 10px; border-radius: 4px; }
 
-/* Menu no topo */
+/* Menu no topo com 5 abas ajustadas para caber perfeitamente no mobile */
 nav {
     display: flex;
     justify-content: space-between;
-    gap: 3px;
+    gap: 2px;
     width: 100%;
 }
 
@@ -41,10 +41,10 @@ nav button {
     background: none; 
     border: 1px solid var(--accent-light); 
     color: var(--accent-light); 
-    padding: 8px 2px; 
+    padding: 7px 1px; 
     cursor: pointer; 
     border-radius: 5px; 
-    font-size: 0.38em; 
+    font-size: 0.31em; 
     flex: 1; 
     text-align: center;
     display: flex;
@@ -59,8 +59,8 @@ nav button {
 nav button svg {
     flex-shrink: 0;
     stroke: currentColor;
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     pointer-events: none;
 }
 
@@ -79,9 +79,9 @@ nav button:hover, nav button.active {
     border-radius: 8px;
     font-family: sans-serif;
     position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 14px;
+    top: 3px;
+    right: 3px;
+    min-width: 13px;
     text-align: center;
 }
 
@@ -105,13 +105,13 @@ main { padding: 20px; max-width: 600px; margin: auto; }
 .tab { display: none; }
 .tab.active { display: block; animation: fadeInSlide 0.35s ease-out; }
 
-h2 { color: var(--accent-light); margin-bottom: 15px; font-size: 1.2em; text-align: center; }
+h2 { color: var(--accent-light); margin-bottom: 15px; font-size: 1.15em; text-align: center; }
 
-form, .modal-content { display: flex; flex-direction: column; gap: 15px; }
+form, .modal-content { display: flex; flex-direction: column; gap: 13px; }
 input, select { padding: 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 5px; font-size: 1em; transition: border-color 0.2s; width: 100%; }
 input:focus, select:focus { outline: none; border-color: var(--accent-light); }
 
-button { padding: 12px; background-color: var(--accent-light); color: var(--bg-color); border: none; font-size: 0.9em; cursor: pointer; border-radius: 5px; font-family: 'Sofachrome', sans-serif; transition: transform 0.1s ease, filter 0.2s; }
+button { padding: 12px; background-color: var(--accent-light); color: var(--bg-color); border: none; font-size: 0.85em; cursor: pointer; border-radius: 5px; font-family: 'Sofachrome', sans-serif; transition: transform 0.1s ease, filter 0.2s; }
 button.btn-danger { background-color: var(--danger-color); color: white; }
 button.btn-success { background-color: var(--accent-dark); color: white; }
 
@@ -179,7 +179,34 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Barra de 4 botões alinhados dentro do card do Pátio */
+.card.card-mensalista {
+    border-left-color: var(--qr-color);
+}
+
+/* Badges de status do Mensalista */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.72em;
+    font-weight: bold;
+    font-family: sans-serif;
+    letter-spacing: 0.5px;
+}
+
+.status-pago {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+    border: 1px solid #4CAF50;
+}
+
+.status-pendente {
+    background-color: rgba(255, 51, 51, 0.2);
+    color: #ff5555;
+    border: 1px solid #ff5555;
+}
+
+/* Barra de botões alinhados dentro dos cards */
 .card-actions {
     display: flex;
     gap: 4px;
@@ -199,11 +226,47 @@ button.btn-success { background-color: var(--accent-dark); color: white; }
     white-space: nowrap;
 }
 
+/* Painel de Resumo Financeiro Separado na aba Relatórios */
+.painel-resumo-mensal {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.linha-resumo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2b2b2b;
+}
+
+.linha-resumo.total-geral {
+    border-bottom: none;
+    padding-bottom: 0;
+    padding-top: 4px;
+    font-size: 1.1em;
+}
+
+.subtitulo-relatorio {
+    color: var(--accent-light);
+    font-size: 0.8em;
+    border-bottom: 2px solid var(--accent-light);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+}
+
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 2000; }
 .modal-content { background: var(--bg-color); padding: 20px; border: 2px solid var(--accent-light); border-radius: 10px; width: 90%; max-width: 400px; animation: fadeInSlide 0.3s ease-out; }
 
-.resumo-dia { font-size: 1.2em; color: var(--accent-light); margin-bottom: 20px; text-align: center; }
-#total-dia, #total-mes { color: var(--text-color); }
+.resumo-dia { font-size: 1.1em; color: var(--accent-light); margin-bottom: 15px; text-align: center; }
+#total-dia { color: var(--text-color); }
 
 .rodape-brabo {
     text-align: center;
