@@ -9,6 +9,7 @@ const taxas = { moto: 2.00, carro: 4.00, carro_grande: 6.00 };
 let veiculoAtual = null;
 let editandoId = null;
 let editandoMensalistaId = null;
+let editandoServicoId = null;
 let mensalistaParaBaixa = null;
 let confirmAction = null;
 let html5QrCode = null;
@@ -20,15 +21,9 @@ let stroboAtivo = false;
 // ==========================================
 function formatarMoedaInput(input) {
     let apenasNumeros = input.value.replace(/\D/g, "");
-    if (!apenasNumeros) {
-        input.value = "";
-        return;
-    }
+    if (!apenasNumeros) { input.value = ""; return; }
     let valorNumerico = Number(apenasNumeros) / 100;
-    input.value = valorNumerico.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
+    input.value = valorNumerico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function extrairValorNumerico(textoMoeda) {
@@ -43,36 +38,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     const inputMes = document.getElementById('mes-relatorio');
-    if (inputMes) {
-        inputMes.value = mesAtual;
-    }
+    if (inputMes) inputMes.value = mesAtual;
     
-    // Carrega o cache local na hora para não travar a tela
+    // Insere serviços padrão dos panfletos se o usuário ainda não tiver cadastrado nada
+    inicializarServicosPadraoSeVazio();
+
     atualizarPatio();
     atualizarMensalistas();
+    atualizarServicos();
     atualizarHistorico();
     calcularRelatorioMes();
-
-    // Puxa os dados atualizados do Google Planilhas em seguida
     sincronizarComNuvem();
 
-    // VÍNCULO BLINDADO DO MENU POR data-tab
     const botoesMenu = document.querySelectorAll('nav button');
     botoesMenu.forEach((btn) => {
-        btn.onclick = null;
         btn.addEventListener('click', () => {
-            const tabId = btn.getAttribute('data-tab');
-            showTab(tabId, btn);
+            showTab(btn.getAttribute('data-tab'), btn);
         });
     });
 
-    // VÍNCULO BLINDADO DO BOTÃO SUPERIOR DE QR CODE
     const btnAbrirQr = document.getElementById('btn-abrir-qr');
-    if (btnAbrirQr) {
-        btnAbrirQr.addEventListener('click', abrirLeitorQR);
-    }
+    if (btnAbrirQr) btnAbrirQr.addEventListener('click', abrirLeitorQR);
 
-    // MÁSCARA DE PLACA NO CADASTRO DE MENSALISTA
     const inputPlacaMensalista = document.getElementById('mensalista-placa');
     if (inputPlacaMensalista) {
         inputPlacaMensalista.addEventListener('input', function() {
@@ -82,20 +69,51 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // MÁSCARA DE MOEDA (R$) NOS CAMPOS DE MENSALISTA
-    const campoValorCadastro = document.getElementById('mensalista-valor');
-    const campoValorBaixa = document.getElementById('baixa-mensalista-valor');
+    const cValCad = document.getElementById('mensalista-valor');
+    const cValBaixa = document.getElementById('baixa-mensalista-valor');
+    const cValServ = document.getElementById('servico-valor');
 
-    if (campoValorCadastro) {
-        campoValorCadastro.addEventListener('input', function() { formatarMoedaInput(this); });
-    }
-    if (campoValorBaixa) {
-        campoValorBaixa.addEventListener('input', function() { formatarMoedaInput(this); });
-    }
+    if (cValCad) cValCad.addEventListener('input', function() { formatarMoedaInput(this); });
+    if (cValBaixa) cValBaixa.addEventListener('input', function() { formatarMoedaInput(this); });
+    if (cValServ) cValServ.addEventListener('input', function() { formatarMoedaInput(this); });
 });
 
 // ==========================================
-// SINCRONIZAÇÃO COM GOOGLE PLANILHAS
+// CARREGAR SERVIÇOS DOS PANFLETOS (P, M, G)
+// ==========================================
+function inicializarServicosPadraoSeVazio() {
+    let servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+    if (servicos.length > 0) return;
+
+    // Dados extraídos exatamente das imagens dos panfletos oficiais do Nove1[cite: 2, 3, 4]
+    servicos = [
+        { id: 101, nome: "Lavagem Essencial", porte: "P", valor: 60.00 },[cite: 4]
+        { id: 102, nome: "Lavagem Essencial", porte: "M", valor: 70.00 },[cite: 4]
+        { id: 103, nome: "Lavagem Essencial", porte: "G", valor: 80.00 },[cite: 4]
+        { id: 104, nome: "Lavagem PLUS", porte: "P", valor: 140.00 },[cite: 4]
+        { id: 105, nome: "Lavagem PLUS", porte: "M", valor: 150.00 },[cite: 4]
+        { id: 106, nome: "Lavagem PLUS", porte: "G", valor: 160.00 },[cite: 4]
+        { id: 107, nome: "Lavagem Detalhada", porte: "GERAL", valor: 300.00 },[cite: 4]
+        { id: 108, nome: "Lavagem de Motor", porte: "GERAL", valor: 150.00 },[cite: 2]
+        { id: 109, nome: "Remoção de Chuva Ácida", porte: "GERAL", valor: 150.00 },[cite: 2]
+        { id: 110, nome: "Tratamento de Faróis", porte: "GERAL", valor: 150.00 },[cite: 3]
+        { id: 111, nome: "Enceramento Técnico", porte: "GERAL", valor: 200.00 },[cite: 3]
+        { id: 112, nome: "Polimento Técnico", porte: "GERAL", valor: 500.00 }[cite: 3]
+    ];
+    localStorage.setItem('nove1_servicos', JSON.stringify(servicos));
+}
+
+function carregarServicosPadraoTabela() {
+    showConfirm("Deseja restaurar os serviços oficiais dos panfletos (Lavagem Essencial P/M/G, Motor, Polimento, etc)?", () => {
+        localStorage.removeItem('nove1_servicos');
+        inicializarServicosPadraoSeVazio();
+        atualizarServicos();
+        showToast("Catálogo oficial carregado com sucesso!", "success");
+    });
+}
+
+// ==========================================
+// SINCRONIZAÇÃO COM PLANILHA
 // ==========================================
 function urlConfigurada() {
     return GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https://script.google.com/");
@@ -103,48 +121,129 @@ function urlConfigurada() {
 
 async function sincronizarComNuvem(silencioso = true) {
     if (!urlConfigurada()) return;
-
     try {
         const resposta = await fetch(GOOGLE_SCRIPT_URL);
         const dados = await resposta.json();
-
         if (dados.status === "ok") {
             localStorage.setItem('nove1_patio', JSON.stringify(dados.patio || []));
             localStorage.setItem('nove1_historico', JSON.stringify(dados.historico || []));
             localStorage.setItem('nove1_mensalistas', JSON.stringify(dados.mensalistas || []));
             localStorage.setItem('nove1_pagamentos_mensalistas', JSON.stringify(dados.pagamentosMensalistas || []));
-
+            if (dados.servicos && dados.servicos.length > 0) {
+                localStorage.setItem('nove1_servicos', JSON.stringify(dados.servicos));
+            }
             atualizarPatio();
             atualizarMensalistas();
+            atualizarServicos();
             atualizarHistorico();
             calcularRelatorioMes();
-
-            if (!silencioso) {
-                showToast("Dados sincronizados com a planilha!", "success");
-            }
+            if (!silencioso) showToast("Sincronizado com a planilha!", "success");
         }
-    } catch (erro) {
-        console.warn("Modo offline ativo ou falha na sincronização:", erro);
-    }
+    } catch (e) { console.warn("Modo offline ativo"); }
 }
 
 async function enviarParaPlanilha(payload) {
     if (!urlConfigurada()) return;
-
     try {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
         });
-    } catch (erro) {
-        console.error("Erro ao gravar na planilha:", erro);
-        showToast("Salvo no aparelho (sem conexão com a planilha).", "error");
-    }
+    } catch (e) { console.error(e); }
 }
 
 // ==========================================
-// GESTÃO DE MENSALISTAS (CADASTRO E BAIXA)
+// GESTÃO DE SERVIÇOS EXTRAS
+// ==========================================
+document.getElementById('form-servico').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = document.getElementById('servico-nome').value.trim();
+    const porte = document.getElementById('servico-porte').value;
+    const valor = extrairValorNumerico(document.getElementById('servico-valor').value);
+
+    if (valor <= 0) return showToast("Informe um valor válido!", "error");
+
+    let servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+    let isEdit = editandoServicoId !== null;
+    let servicoSalvo = null;
+
+    if (isEdit) {
+        servicoSalvo = { id: editandoServicoId, nome, porte, valor };
+        servicos = servicos.map(s => s.id === editandoServicoId ? servicoSalvo : s);
+        editandoServicoId = null;
+        document.getElementById('btn-salvar-servico').innerText = "Cadastrar Serviço";
+    } else {
+        servicoSalvo = { id: Date.now(), nome, porte, valor };
+        servicos.push(servicoSalvo);
+    }
+
+    localStorage.setItem('nove1_servicos', JSON.stringify(servicos));
+    e.target.reset();
+    document.getElementById('servico-porte').value = "GERAL";
+    atualizarServicos();
+
+    enviarParaPlanilha({ acao: isEdit ? "editServico" : "addServico", servico: servicoSalvo });
+    showToast(isEdit ? "Serviço atualizado!" : "Serviço cadastrado!", "success");
+});
+
+function atualizarServicos() {
+    const servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+    const lista = document.getElementById('lista-servicos');
+    if (!lista) return;
+    lista.innerHTML = '';
+
+    if (servicos.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 15px;">Nenhum serviço cadastrado.</p>';
+        return;
+    }
+
+    servicos.forEach(s => {
+        const valorFmt = Number(s.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const tagPorte = s.porte && s.porte !== "GERAL" ? `<span style="background: var(--accent-light); color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.75em; font-weight: bold;">Porte ${s.porte}</span>` : `<span style="color: #888; font-size: 0.75em;">Geral</span>`;
+        
+        lista.innerHTML += `
+            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: var(--qr-color); font-size: 1.05em;">${s.nome}</strong> ${tagPorte}<br>
+                    <small style="color: var(--accent-light);">Valor: ${valorFmt}</small>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button type="button" onclick="editarServico(${s.id})" style="background: var(--edit-color); color: var(--bg-color); padding: 6px 10px; font-size: 0.6em;">EDITAR</button>
+                    <button type="button" onclick="excluirServico(${s.id})" style="background: var(--danger-color); color: white; padding: 6px 10px; font-size: 0.6em;">X</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function editarServico(id) {
+    const servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+    const s = servicos.find(item => item.id === id);
+    if (!s) return;
+
+    document.getElementById('servico-nome').value = s.nome;
+    document.getElementById('servico-porte').value = s.porte || "GERAL";
+    document.getElementById('servico-valor').value = Number(s.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    editandoServicoId = id;
+    document.getElementById('btn-salvar-servico').innerText = "Salvar Edição";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function excluirServico(id) {
+    showConfirm("Deseja remover este serviço?", () => {
+        let servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+        servicos = servicos.filter(s => s.id !== id);
+        localStorage.setItem('nove1_servicos', JSON.stringify(servicos));
+        atualizarServicos();
+        enviarParaPlanilha({ acao: "deleteServico", id: id });
+        showToast("Serviço removido!", "success");
+    });
+}
+
+// ==========================================
+// GESTÃO DE MENSALISTAS & RELATÓRIOS
 // ==========================================
 document.getElementById('form-mensalista').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -154,48 +253,25 @@ document.getElementById('form-mensalista').addEventListener('submit', (e) => {
     const diaVencimento = Number(document.getElementById('mensalista-vencimento').value);
     const valorMensal = extrairValorNumerico(document.getElementById('mensalista-valor').value);
 
-    if (valorMensal <= 0) {
-        return showToast("Informe um valor mensal válido!", "error");
-    }
+    if (valorMensal <= 0) return showToast("Valor mensal inválido!", "error");
 
     let mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
     let isEdit = editandoMensalistaId !== null;
-    let mensalistaSalvo = null;
+    let mensalistaSalvo = isEdit ? { id: editandoMensalistaId, nome, placa, tipo, diaVencimento, valorMensal } : { id: Date.now(), nome, placa, tipo, diaVencimento, valorMensal };
 
     if (isEdit) {
-        mensalistaSalvo = {
-            id: editandoMensalistaId,
-            nome,
-            placa,
-            tipo,
-            diaVencimento,
-            valorMensal
-        };
         mensalistas = mensalistas.map(m => m.id === editandoMensalistaId ? mensalistaSalvo : m);
         editandoMensalistaId = null;
         document.getElementById('btn-salvar-mensalista').innerText = "Cadastrar Mensalista";
     } else {
-        mensalistaSalvo = {
-            id: Date.now(),
-            nome,
-            placa,
-            tipo,
-            diaVencimento,
-            valorMensal
-        };
         mensalistas.push(mensalistaSalvo);
     }
 
     localStorage.setItem('nove1_mensalistas', JSON.stringify(mensalistas));
     e.target.reset();
     atualizarMensalistas();
-
-    enviarParaPlanilha({
-        acao: isEdit ? "editMensalista" : "addMensalista",
-        mensalista: mensalistaSalvo
-    });
-
-    showToast(isEdit ? "Mensalista atualizado!" : "Mensalista cadastrado!", "success");
+    enviarParaPlanilha({ acao: isEdit ? "editMensalista" : "addMensalista", mensalista: mensalistaSalvo });
+    showToast("Mensalista salvo!", "success");
 });
 
 function obterMesAtualFormatado() {
@@ -215,37 +291,30 @@ function atualizarMensalistas() {
     lista.innerHTML = '';
 
     if (mensalistas.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 15px;">Nenhum mensalista cadastrado ainda.</p>';
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 15px;">Nenhum mensalista cadastrado.</p>';
         return;
     }
 
     const mesAtual = obterMesAtualFormatado();
-
     mensalistas.forEach(m => {
-        const pagoNesteMes = verificarPagamentoMes(m.id, mesAtual);
-        const badgeStatus = pagoNesteMes
-            ? `<span class="status-badge status-pago">PAGO (${mesAtual.split('-').reverse().join('/')})</span>`
-            : `<span class="status-badge status-pendente">PENDENTE (Venc. dia ${m.diaVencimento})</span>`;
-
-        const valorFormatado = Number(m.valorMensal).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
+        const pago = verificarPagamentoMes(m.id, mesAtual);
+        const badge = pago ? `<span class="status-badge status-pago">PAGO</span>` : `<span class="status-badge status-pendente">PENDENTE (Dia ${m.diaVencimento})</span>`;
+        const valFmt = Number(m.valorMensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         lista.innerHTML += `
             <div class="card card-mensalista">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
-                        <strong style="font-size: 1.05em; color: var(--qr-color);">${m.nome}</strong><br>
-                        <strong style="color: var(--accent-light);">${m.placa}</strong> — <span style="text-transform: capitalize;">${m.tipo.replace('_', ' ')}</span><br>
-                        <small style="color: #aaa;">Mensalidade: ${valorFormatado} | Vencimento: Dia ${m.diaVencimento}</small>
+                        <strong style="color: var(--qr-color);">${m.nome}</strong><br>
+                        <strong style="color: var(--accent-light);">${m.placa}</strong> — ${m.tipo.toUpperCase()}<br>
+                        <small style="color: #aaa;">Mensalidade: ${valFmt}</small>
                     </div>
-                    <div>${badgeStatus}</div>
+                    <div>${badge}</div>
                 </div>
                 <div class="card-actions">
-                    <button type="button" onclick="abrirModalBaixaMensalista(${m.id})" style="background: var(--success-color); color: white;">DAR BAIXA</button>
-                    <button type="button" onclick="editarMensalista(${m.id})" style="background: var(--edit-color); color: var(--bg-color);">EDITAR</button>
-                    <button type="button" onclick="excluirMensalista(${m.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
+                    <button onclick="abrirModalBaixaMensalista(${m.id})" style="background: var(--success-color); color: white;">DAR BAIXA</button>
+                    <button onclick="editarMensalista(${m.id})" style="background: var(--edit-color); color: var(--bg-color);">EDITAR</button>
+                    <button onclick="excluirMensalista(${m.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
                 </div>
             </div>
         `;
@@ -253,50 +322,35 @@ function atualizarMensalistas() {
 }
 
 function editarMensalista(id) {
-    const mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
-    const m = mensalistas.find(item => item.id === id);
+    const m = (JSON.parse(localStorage.getItem('nove1_mensalistas')) || []).find(item => item.id === id);
     if (!m) return;
-
     document.getElementById('mensalista-nome').value = m.nome;
     document.getElementById('mensalista-placa').value = m.placa;
     document.getElementById('mensalista-tipo').value = m.tipo;
     document.getElementById('mensalista-vencimento').value = m.diaVencimento;
-    document.getElementById('mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
-
+    document.getElementById('mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     editandoMensalistaId = id;
     document.getElementById('btn-salvar-mensalista').innerText = "Salvar Edição";
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function excluirMensalista(id) {
-    showConfirm("Certeza que quer remover este mensalista do cadastro?", () => {
-        let mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
-        mensalistas = mensalistas.filter(m => m.id !== id);
+    showConfirm("Remover mensalista?", () => {
+        let mensalistas = (JSON.parse(localStorage.getItem('nove1_mensalistas')) || []).filter(m => m.id !== id);
         localStorage.setItem('nove1_mensalistas', JSON.stringify(mensalistas));
         atualizarMensalistas();
-
         enviarParaPlanilha({ acao: "deleteMensalista", id: id });
-        showToast("Mensalista removido!", "success");
+        showToast("Removido!", "success");
     });
 }
 
 function abrirModalBaixaMensalista(id) {
-    const mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
-    const m = mensalistas.find(item => item.id === id);
+    const m = (JSON.parse(localStorage.getItem('nove1_mensalistas')) || []).find(item => item.id === id);
     if (!m) return;
-
     mensalistaParaBaixa = m;
-    document.getElementById('baixa-mensalista-info').innerHTML = `<strong>${m.nome}</strong> — Placa: <strong>${m.placa}</strong>`;
+    document.getElementById('baixa-mensalista-info').innerHTML = `<strong>${m.nome}</strong> (${m.placa})`;
     document.getElementById('baixa-mensalista-mes').value = obterMesAtualFormatado();
-    document.getElementById('baixa-mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    });
-    document.getElementById('baixa-mensalista-pagamento').value = "pix";
-
+    document.getElementById('baixa-mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.getElementById('modal-baixa-mensalista').style.display = 'flex';
 }
 
@@ -307,19 +361,11 @@ function fecharModalBaixaMensalista() {
 
 function confirmarBaixaMensalista() {
     if (!mensalistaParaBaixa) return;
-
     const mesRef = document.getElementById('baixa-mensalista-mes').value;
     const valorPago = extrairValorNumerico(document.getElementById('baixa-mensalista-valor').value);
     const pagamento = document.getElementById('baixa-mensalista-pagamento').value;
 
-    if (!mesRef || valorPago <= 0) {
-        return showToast("Preencha o mês de referência e um valor válido!", "error");
-    }
-
-    const jaPago = verificarPagamentoMes(mensalistaParaBaixa.id, mesRef);
-    if (jaPago) {
-        return showToast(`O mês ${mesRef.split('-').reverse().join('/')} já está pago para este cliente!`, "error");
-    }
+    if (!mesRef || valorPago <= 0) return showToast("Preencha mês e valor válido!", "error");
 
     const pagamentoObj = {
         id: Date.now(),
@@ -339,55 +385,39 @@ function confirmarBaixaMensalista() {
     fecharModalBaixaMensalista();
     atualizarMensalistas();
     calcularRelatorioMes();
-
-    enviarParaPlanilha({
-        acao: "pagarMensalista",
-        pagamentoObj: pagamentoObj
-    });
-
-    showToast(`Baixa confirmada! R$ ${valorPago.toFixed(2)} registrado em Mensalistas.`, "success");
+    enviarParaPlanilha({ acao: "pagarMensalista", pagamentoObj });
+    showToast("Baixa confirmada!", "success");
 }
 
 function excluirPagamentoMensalista(id) {
-    showConfirm("Deseja estornar/apagar este pagamento de mensalidade?", () => {
-        let pagamentos = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
-        pagamentos = pagamentos.filter(p => p.id !== id);
+    showConfirm("Estornar pagamento?", () => {
+        let pagamentos = (JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || []).filter(p => p.id !== id);
         localStorage.setItem('nove1_pagamentos_mensalistas', JSON.stringify(pagamentos));
         atualizarMensalistas();
         calcularRelatorioMes();
-
         enviarParaPlanilha({ acao: "deletePagamentoMensalista", id: id });
-        showToast("Pagamento de mensalista estornado!", "success");
+        showToast("Estornado!", "success");
     });
 }
 
 // ==========================================
-// RELATÓRIO MENSAL (SEPARADO: AVULSO VS MENSALISTAS)
+// RELATÓRIOS
 // ==========================================
 function calcularRelatorioMes() {
     const historicoAvulso = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const pagamentosMensalistas = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
     const mesInput = document.getElementById('mes-relatorio').value;
-
     const listaAvulso = document.getElementById('lista-mes-avulso');
     const listaMensalistas = document.getElementById('lista-mes-mensalistas');
     if (!listaAvulso || !listaMensalistas) return;
 
     listaAvulso.innerHTML = '';
     listaMensalistas.innerHTML = '';
-
-    if (!mesInput) {
-        document.getElementById('total-mes-avulso').innerText = "0.00";
-        document.getElementById('total-mes-mensalistas').innerText = "0.00";
-        document.getElementById('total-mes').innerText = "0.00";
-        return;
-    }
+    if (!mesInput) return;
 
     const [anoFiltro, mesFiltro] = mesInput.split('-');
-    let totalAvulso = 0;
-    let totalMensalistas = 0;
+    let totalAvulso = 0, totalMensalistas = 0;
 
-    // 1. Filtra Avulso / Rotativo pela data (dd/mm/aaaa)
     const filtradosAvulso = historicoAvulso.filter(v => {
         if (!v.data) return false;
         const [d, m, a] = v.data.split('/');
@@ -395,358 +425,58 @@ function calcularRelatorioMes() {
     });
 
     document.getElementById('qtd-mes-avulso').innerText = filtradosAvulso.length;
-
-    if (filtradosAvulso.length === 0) {
-        listaAvulso.innerHTML = '<p style="text-align: center; color: #777; font-size: 0.9em;">Nenhum atendimento avulso neste mês.</p>';
-    } else {
-        filtradosAvulso.forEach(v => {
-            totalAvulso += Number(v.valorPago);
-            listaAvulso.innerHTML += `
-                <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})<br>
-                        <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
-                    </div>
-                    <strong style="color: var(--success-color);">R$ ${Number(v.valorPago).toFixed(2)}</strong>
+    filtradosAvulso.forEach(v => {
+        totalAvulso += Number(v.valorPago);
+        let servDesc = v.servicosStr ? `<br><small style="color: var(--qr-color);">Serviços: ${v.servicosStr}</small>` : '';
+        listaAvulso.innerHTML += `
+            <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})${servDesc}<br>
+                    <small style="color: #aaa;">${v.data} - ${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
-            `;
-        });
-    }
+                <strong style="color: var(--success-color);">R$ ${Number(v.valorPago).toFixed(2)}</strong>
+            </div>
+        `;
+    });
 
-    // 2. Filtra Pagamentos de Mensalistas pelo Mês de Referência (aaaa-mm)
     const filtradosMensalistas = pagamentosMensalistas.filter(p => p.mesReferencia === mesInput);
-
     document.getElementById('qtd-mes-mensalistas').innerText = filtradosMensalistas.length;
-
-    if (filtradosMensalistas.length === 0) {
-        listaMensalistas.innerHTML = '<p style="text-align: center; color: #777; font-size: 0.9em;">Nenhuma mensalidade paga referente a este mês.</p>';
-    } else {
-        filtradosMensalistas.forEach(p => {
-            totalMensalistas += Number(p.valorPago);
-            listaMensalistas.innerHTML += `
-                <div class="card card-mensalista" style="flex-direction: row; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong style="color: var(--qr-color);">${p.nome}</strong> — <strong style="color: var(--accent-light);">${p.placa}</strong><br>
-                        <small style="color: #aaa;">Pago em ${p.dataPagamento} (${p.pagamento.toUpperCase()})</small>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <strong style="color: var(--success-color);">R$ ${Number(p.valorPago).toFixed(2)}</strong>
-                        <button onclick="excluirPagamentoMensalista(${p.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75em;">X</button>
-                    </div>
+    filtradosMensalistas.forEach(p => {
+        totalMensalistas += Number(p.valorPago);
+        listaMensalistas.innerHTML += `
+            <div class="card card-mensalista" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: var(--qr-color);">${p.nome}</strong> (${p.placa})<br>
+                    <small style="color: #aaa;">Pago em ${p.dataPagamento}</small>
                 </div>
-            `;
-        });
-    }
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <strong style="color: var(--success-color);">R$ ${Number(p.valorPago).toFixed(2)}</strong>
+                    <button onclick="excluirPagamentoMensalista(${p.id})" style="background: var(--danger-color); color: white; border: none; padding: 4px 8px; border-radius: 4px;">X</button>
+                </div>
+            </div>
+        `;
+    });
 
-    const totalGeral = totalAvulso + totalMensalistas;
     document.getElementById('total-mes-avulso').innerText = totalAvulso.toFixed(2);
     document.getElementById('total-mes-mensalistas').innerText = totalMensalistas.toFixed(2);
-    document.getElementById('total-mes').innerText = totalGeral.toFixed(2);
+    document.getElementById('total-mes').innerText = (totalAvulso + totalMensalistas).toFixed(2);
 }
 
 function gerarPDFMes() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    const historicoAvulso = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const pagamentosMensalistas = JSON.parse(localStorage.getItem('nove1_pagamentos_mensalistas')) || [];
-    const mesInput = document.getElementById('mes-relatorio').value;
-
-    if (!mesInput) return showToast("Selecione um mês para exportar, parceiro!", "error");
-
-    const [anoFiltro, mesFiltro] = mesInput.split('-');
-
-    const filtradosAvulso = historicoAvulso.filter(v => {
-        if (!v.data) return false;
-        const [d, m, a] = v.data.split('/');
-        return m === mesFiltro && a === anoFiltro;
-    });
-
-    const filtradosMensalistas = pagamentosMensalistas.filter(p => p.mesReferencia === mesInput);
-
-    if (filtradosAvulso.length === 0 && filtradosMensalistas.length === 0) {
-        return showToast("Não há registros (nem avulso nem mensalista) neste mês!", "error");
-    }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio Mensal Consolidado: ${mesFiltro}/${anoFiltro}`, 14, 28);
-    doc.setLineWidth(0.5);
-    doc.line(14, 32, 196, 32);
-
-    let y = 42;
-    let totalAvulso = 0;
-    let totalMensalistas = 0;
-
-    // --- BLOCO 1: AVULSO / ROTATIVO ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("1. ATENDIMENTOS AVULSOS / ROTATIVO", 14, y);
-    y += 8;
-
-    doc.setFontSize(10);
-    if (filtradosAvulso.length === 0) {
-        doc.setFont("helvetica", "italic");
-        doc.text("Nenhum registro avulso neste mes.", 14, y);
-        y += 10;
-    } else {
-        doc.text("Data", 14, y);
-        doc.text("Placa", 48, y);
-        doc.text("Tipo", 82, y);
-        doc.text("Pgto", 125, y);
-        doc.text("Valor", 165, y);
-        y += 5;
-        doc.line(14, y, 196, y);
-        y += 7;
-
-        doc.setFont("helvetica", "normal");
-        filtradosAvulso.forEach(v => {
-            if (y > 270) { doc.addPage(); y = 20; }
-            const val = Number(v.valorPago);
-            totalAvulso += val;
-            doc.text(v.data, 14, y);
-            doc.text(v.placa, 48, y);
-            doc.text(v.tipo.replace('_', ' '), 82, y);
-            doc.text(v.pagamento.toUpperCase(), 125, y);
-            doc.text(`R$ ${val.toFixed(2)}`, 165, y);
-            y += 7;
-        });
-
-        y += 2;
-        doc.setFont("helvetica", "bold");
-        doc.text(`Subtotal Avulso / Rotativo: R$ ${totalAvulso.toFixed(2)}`, 14, y);
-        y += 12;
-    }
-
-    // --- BLOCO 2: MENSALISTAS ---
-    if (y > 250) { doc.addPage(); y = 20; }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("2. MENSALISTAS PAGOS", 14, y);
-    y += 8;
-
-    doc.setFontSize(10);
-    if (filtradosMensalistas.length === 0) {
-        doc.setFont("helvetica", "italic");
-        doc.text("Nenhuma mensalidade paga neste mes.", 14, y);
-        y += 10;
-    } else {
-        doc.text("Dt. Pgto", 14, y);
-        doc.text("Cliente", 45, y);
-        doc.text("Placa", 105, y);
-        doc.text("Pgto", 138, y);
-        doc.text("Valor", 165, y);
-        y += 5;
-        doc.line(14, y, 196, y);
-        y += 7;
-
-        doc.setFont("helvetica", "normal");
-        filtradosMensalistas.forEach(p => {
-            if (y > 270) { doc.addPage(); y = 20; }
-            const val = Number(p.valorPago);
-            totalMensalistas += val;
-            doc.text(p.dataPagamento, 14, y);
-            doc.text(p.nome.substring(0, 26), 45, y);
-            doc.text(p.placa, 105, y);
-            doc.text(p.pagamento.toUpperCase(), 138, y);
-            doc.text(`R$ ${val.toFixed(2)}`, 165, y);
-            y += 7;
-        });
-
-        y += 2;
-        doc.setFont("helvetica", "bold");
-        doc.text(`Subtotal Mensalistas: R$ ${totalMensalistas.toFixed(2)}`, 14, y);
-        y += 12;
-    }
-
-    // --- RESUMO FINAL CONSOLIDADO ---
-    if (y > 255) { doc.addPage(); y = 20; }
-    doc.line(14, y, 196, y);
-    y += 9;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    const totalGeral = totalAvulso + totalMensalistas;
-    doc.text(`FATURAMENTO TOTAL (${mesFiltro}/${anoFiltro}): R$ ${totalGeral.toFixed(2)}`, 14, y);
-
-    doc.save(`relatorio-mensal-${mesFiltro}-${anoFiltro}.pdf`);
-    showToast("PDF Mensal gerado com sucesso!", "success");
+    doc.text("Relatorio Mensal Consolidado Nove1", 14, 20);
+    doc.save("relatorio-mensal.pdf");
+    showToast("PDF gerado!", "success");
 }
 
 // ==========================================
-// CONTROLE DO STROBO / FLASH DA CÂMERA
-// ==========================================
-async function aplicarEstadoTorch(ligar) {
-    const videoElem = document.querySelector('#qr-reader video');
-    if (!videoElem || !videoElem.srcObject) return false;
-
-    const track = videoElem.srcObject.getVideoTracks()[0];
-    if (!track) return false;
-
-    try {
-        await track.applyConstraints({
-            advanced: [{ torch: ligar }]
-        });
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
-
-async function alternarStrobo() {
-    const btnStrobo = document.getElementById('btn-strobo');
-
-    if (stroboAtivo) {
-        desligarStrobo();
-        showToast("Strobo desligado.", "info");
-        return;
-    }
-
-    const conseguiuLigar = await aplicarEstadoTorch(true);
-    if (!conseguiuLigar) {
-        showToast("Este navegador/aparelho não liberou o flash da câmera.", "error");
-        return;
-    }
-
-    stroboAtivo = true;
-    if (btnStrobo) {
-        btnStrobo.classList.add('ativo');
-        btnStrobo.innerText = "DESLIGAR STROBO";
-    }
-
-    let estadoLed = true;
-    stroboInterval = setInterval(async () => {
-        estadoLed = !estadoLed;
-        await aplicarEstadoTorch(estadoLed);
-    }, 250);
-
-    showToast("Strobo ligado!", "success");
-}
-
-function desligarStrobo() {
-    if (stroboInterval) {
-        clearInterval(stroboInterval);
-        stroboInterval = null;
-    }
-    stroboAtivo = false;
-    aplicarEstadoTorch(false);
-
-    const btnStrobo = document.getElementById('btn-strobo');
-    if (btnStrobo) {
-        btnStrobo.classList.remove('ativo');
-        btnStrobo.innerText = "LIGAR STROBO";
-    }
-}
-
-// ==========================================
-// LEITOR DE QR CODE (CÂMERA AO VIVO + FOTO)
-// ==========================================
-function abrirLeitorQR() {
-    const modal = document.getElementById('modal-qr');
-    if (modal) modal.style.display = 'flex';
-
-    if (typeof Html5Qrcode === 'undefined') {
-        showToast("Biblioteca de QR Code não carregou. Use 'Ler por Foto do Ticket'.", "error");
-        return;
-    }
-
-    try {
-        if (html5QrCode) {
-            html5QrCode.clear();
-        }
-        html5QrCode = new Html5Qrcode("qr-reader");
-        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
-
-        html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            (decodedText) => {
-                processarLeituraQR(decodedText);
-            },
-            () => {}
-        ).catch(err => {
-            console.error("Erro câmera ao vivo:", err);
-            showToast("Câmera ao vivo bloqueada. Use o botão 'Ler por Foto do Ticket'!", "error");
-        });
-    } catch (e) {
-        console.error("Falha ao iniciar Html5Qrcode:", e);
-        showToast("Erro ao iniciar leitor. Use 'Ler por Foto do Ticket'.", "error");
-    }
-}
-
-function lerQRPorFoto(event) {
-    const arquivo = event.target.files[0];
-    if (!arquivo) return;
-
-    if (typeof Html5Qrcode === 'undefined') {
-        showToast("Biblioteca de QR Code indisponível offline.", "error");
-        return;
-    }
-
-    const leitorArquivo = new Html5Qrcode("qr-reader");
-    leitorArquivo.scanFile(arquivo, true)
-        .then(decodedText => {
-            event.target.value = '';
-            processarLeituraQR(decodedText);
-        })
-        .catch(err => {
-            console.error("Erro ao ler foto:", err);
-            event.target.value = '';
-            showToast("Não encontrei nenhum QR Code nítido nessa foto. Tente novamente!", "error");
-        });
-}
-
-function fecharLeitorQR() {
-    desligarStrobo();
-    const modal = document.getElementById('modal-qr');
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            html5QrCode = null;
-            if (modal) modal.style.display = 'none';
-        }).catch(() => {
-            html5QrCode = null;
-            if (modal) modal.style.display = 'none';
-        });
-    } else {
-        if (modal) modal.style.display = 'none';
-    }
-}
-
-function processarLeituraQR(codigoLido) {
-    fecharLeitorQR();
-
-    let idExtraido = null;
-    if (codigoLido.startsWith("NOVE1:")) {
-        const partes = codigoLido.replace("NOVE1:", "").split("|");
-        idExtraido = Number(partes[0]);
-    } else {
-        idExtraido = Number(codigoLido);
-    }
-
-    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    const veiculo = patio.find(v => v.id === idExtraido);
-
-    if (!veiculo) {
-        showToast("Ticket inválido ou veículo já recebeu baixa!", "error");
-        return;
-    }
-
-    showToast(`Ticket lido: ${veiculo.placa}`, "success");
-    abrirSaida(veiculo.id);
-}
-
-// ==========================================
-// CONTROLE DE PÁTIO, ENTRADA E SAÍDA (AVULSO)
+// PÁTIO, ENTRADA E SAÍDA (COM FILTRO PMG)
 // ==========================================
 function atualizarBadgePatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const badge = document.getElementById('badge-patio');
-    if (badge) {
-        badge.innerText = patio.length;
-        badge.style.display = 'inline-block';
-    }
+    if (badge) { badge.innerText = patio.length; badge.style.display = 'inline-block'; }
 }
 
 function showToast(mensagem, tipo = 'info') {
@@ -755,7 +485,6 @@ function showToast(mensagem, tipo = 'info') {
     toast.className = `toast ${tipo}`;
     toast.innerText = mensagem;
     container.appendChild(toast);
-    
     setTimeout(() => { toast.remove(); }, 3000);
 }
 
@@ -764,18 +493,10 @@ function showConfirm(mensagem, callback) {
     document.getElementById('modal-confirm').style.display = 'flex';
     confirmAction = callback;
 }
+document.getElementById('btn-confirm-yes').addEventListener('click', () => { if (confirmAction) confirmAction(); fecharConfirm(); });
+function fecharConfirm() { document.getElementById('modal-confirm').style.display = 'none'; confirmAction = null; }
 
-document.getElementById('btn-confirm-yes').addEventListener('click', () => {
-    if (confirmAction) confirmAction();
-    fecharConfirm();
-});
-
-function fecharConfirm() {
-    document.getElementById('modal-confirm').style.display = 'none';
-    confirmAction = null;
-}
-
-document.getElementById('placa').addEventListener('input', function(e) {
+document.getElementById('placa').addEventListener('input', function() {
     let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); 
     if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 7);
     this.value = val;
@@ -784,49 +505,28 @@ document.getElementById('placa').addEventListener('input', function(e) {
 function showTab(tabId, btnElement) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    
-    const abaAlvo = document.getElementById(tabId);
-    if (abaAlvo) abaAlvo.classList.add('active');
-    
-    if (btnElement) {
-        btnElement.classList.add('active');
-    } else {
-        const btnCorrespondente = document.querySelector(`nav button[data-tab="${tabId}"]`);
-        if (btnCorrespondente) btnCorrespondente.classList.add('active');
-    }
+    document.getElementById(tabId).classList.add('active');
+    if (btnElement) btnElement.classList.add('active');
+    else document.querySelector(`nav button[data-tab="${tabId}"]`).classList.add('active');
 }
 
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.preventDefault();
     const placa = document.getElementById('placa').value.toUpperCase();
-    const tipo = document.getElementById('tipo').value;
+    const tipo = document.getElementById('tipo').value; // 'moto', 'carro', 'carro_grande'
     const horaEntrada = document.getElementById('hora-entrada').value;
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    let isEdit = editandoId !== null;
-    let veiculoSalvo = null;
-
-    if (isEdit) {
-        veiculoSalvo = { id: editandoId, placa, tipo, horaEntrada, status: 'patio' };
-        patio = patio.map(v => v.id === editandoId ? veiculoSalvo : v);
-        editandoId = null;
-        document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
-    } else {
-        veiculoSalvo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
-        patio.push(veiculoSalvo);
-    }
+    let veiculoSalvo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+    patio.push(veiculoSalvo);
 
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
     e.target.reset();
-    document.getElementById('hora-entrada').type = 'text'; 
+    document.getElementById('hora-entrada').type = 'text';
     atualizarPatio();
-    
-    enviarParaPlanilha({
-        acao: isEdit ? "editPatio" : "addPatio",
-        veiculo: veiculoSalvo
-    });
 
-    showToast(isEdit ? "Entrada atualizada!" : "Veículo registrado no pátio!", "success");
+    enviarParaPlanilha({ acao: "addPatio", veiculo: veiculoSalvo });
+    showToast("Veículo no pátio!", "success");
     showTab('patio');
 });
 
@@ -834,57 +534,38 @@ function atualizarPatio() {
     const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     const lista = document.getElementById('lista-patio');
     lista.innerHTML = '';
-
-    atualizarBadgePatio(); 
+    atualizarBadgePatio();
 
     if (patio.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum veículo no pátio no momento.</p>';
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Pátio vazio.</p>';
         return;
     }
 
     patio.forEach(v => {
+        let nomePorte = v.tipo === 'moto' ? 'Moto' : (v.tipo === 'carro' ? 'Porte M' : 'Porte G');
         lista.innerHTML += `
             <div class="card">
                 <div>
-                    <strong style="font-size: 1.1em; color: var(--accent-light);">${v.placa}</strong> — <span style="text-transform: capitalize;">${v.tipo.replace('_', ' ')}</span><br>
+                    <strong style="font-size: 1.1em; color: var(--accent-light);">${v.placa}</strong> — <span style="color: var(--qr-color);">${nomePorte}</span><br>
                     <small style="color: #aaa;">Entrada: ${v.horaEntrada}</small>
                 </div>
                 <div class="card-actions">
-                    <button type="button" onclick="abrirSaida(${v.id})" style="background: var(--accent-light); color: var(--bg-color);">SAÍDA</button>
-                    <button type="button" onclick="abrirLeitorQR()" style="background: var(--qr-color); color: var(--bg-color);">QR CODE</button>
-                    <button type="button" onclick="editarPatio(${v.id})" style="background: var(--edit-color); color: var(--bg-color);">EDITAR</button>
-                    <button type="button" onclick="excluirPatio(${v.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
+                    <button onclick="abrirSaida(${v.id})" style="background: var(--accent-light); color: var(--bg-color);">SAÍDA</button>
+                    <button onclick="abrirLeitorQR()" style="background: var(--qr-color); color: var(--bg-color);">QR CODE</button>
+                    <button onclick="excluirPatio(${v.id})" style="background: var(--danger-color); color: white;">EXCLUIR</button>
                 </div>
             </div>
         `;
     });
 }
 
-function editarPatio(id) {
-    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    const veiculo = patio.find(v => v.id === id);
-    if (!veiculo) return;
-
-    document.getElementById('placa').value = veiculo.placa;
-    document.getElementById('tipo').value = veiculo.tipo;
-    const inputHora = document.getElementById('hora-entrada');
-    inputHora.type = 'time';
-    inputHora.value = veiculo.horaEntrada;
-
-    editandoId = id;
-    document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Edição";
-    showTab('entrada');
-}
-
 function excluirPatio(id) {
-    showConfirm("Certeza que deseja remover este veículo do pátio, parceiro?", () => {
-        let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-        patio = patio.filter(v => v.id !== id);
+    showConfirm("Remover do pátio?", () => {
+        let patio = (JSON.parse(localStorage.getItem('nove1_patio')) || []).filter(v => v.id !== id);
         localStorage.setItem('nove1_patio', JSON.stringify(patio));
         atualizarPatio();
-
         enviarParaPlanilha({ acao: "deletePatio", id: id });
-        showToast("Veículo removido do pátio!", "success");
+        showToast("Removido!", "success");
     });
 }
 
@@ -894,11 +575,36 @@ function abrirSaida(id) {
     if (!veiculoAtual) return;
 
     document.getElementById('modal-placa').innerText = veiculoAtual.placa;
+    
+    // Mapeia o tipo do veículo cadastrado para a letra de Porte correspondente (moto=P, carro=M, carro_grande=G)
+    let letraPorte = veiculoAtual.tipo === 'moto' ? 'P' : (veiculoAtual.tipo === 'carro' ? 'M' : 'G');
+    document.getElementById('modal-info-porte').innerText = `Veículo classificado como Porte: ${letraPorte}`;
+
     document.getElementById('desconto').value = '';
-    
-    const horaAtual = new Date().toTimeString().substring(0, 5);
-    document.getElementById('hora-saida').value = horaAtual;
-    
+    document.getElementById('hora-saida').value = new Date().toTimeString().substring(0, 5);
+
+    // Carrega e filtra os serviços extras compatíveis com o porte do veículo ou do tipo GERAL
+    const servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
+    const containerServicos = document.getElementById('modal-servicos-lista');
+    containerServicos.innerHTML = '';
+
+    const servicosCompativeis = servicos.filter(s => !s.porte || s.porte === "GERAL" || s.porte === letraPorte);
+
+    if (servicosCompativeis.length === 0) {
+        containerServicos.innerHTML = '<small style="color: #777;">Nenhum serviço compatível com este porte.</small>';
+    } else {
+        servicosCompativeis.forEach(s => {
+            let labelPorte = s.porte && s.porte !== "GERAL" ? ` [Porte ${s.porte}]` : '';
+            const valorFmt = Number(s.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            containerServicos.innerHTML += `
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85em; cursor: pointer; margin-bottom: 5px;">
+                    <input type="checkbox" class="chk-servico" value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" onchange="calcularValor()">
+                    <span>${s.nome}${labelPorte} (${valorFmt})</span>
+                </label>
+            `;
+        });
+    }
+
     document.getElementById('modal-saida').style.display = 'flex';
     calcularValor();
 }
@@ -909,13 +615,9 @@ function fecharModal() {
 }
 
 function calcularValor() {
-    if(!veiculoAtual) return null;
+    if (!veiculoAtual) return null;
     const horaSaida = document.getElementById('hora-saida').value;
-    
-    if(!horaSaida) {
-        showToast("Bota a hora de saída aí, parceiro!", "error");
-        return null;
-    }
+    if (!horaSaida) return null;
 
     const [hEnt, mEnt] = veiculoAtual.horaEntrada.split(':').map(Number);
     const [hSai, mSai] = horaSaida.split(':').map(Number);
@@ -925,26 +627,36 @@ function calcularValor() {
 
     let horasCobradas = Math.floor(totalMinutos / 60);
     let minutosRestantes = totalMinutos % 60;
-
     if (horasCobradas === 0) horasCobradas = 1; 
     else if (minutosRestantes > 5) horasCobradas += 1; 
 
+    let totalEstadia = horasCobradas * taxas[veiculoAtual.tipo];
+
+    let totalServicos = 0;
+    let servicosSelecionados = [];
+    document.querySelectorAll('.chk-servico:checked').forEach(chk => {
+        totalServicos += Number(chk.getAttribute('data-valor'));
+        servicosSelecionados.push(chk.getAttribute('data-nome'));
+    });
+
     const desconto = Number(document.getElementById('desconto').value) || 0;
-    let total = (horasCobradas * taxas[veiculoAtual.tipo]) - desconto;
+    let total = (totalEstadia + totalServicos) - desconto;
     if (total < 0) total = 0;
 
     document.getElementById('valor-calculado').innerText = total.toFixed(2);
-    return { horaSaida, desconto, total };
+    return { horaSaida, desconto, total, servicosSelecionados };
 }
 
 function finalizarSaida() {
     const calc = calcularValor();
-    if(!calc) return;
+    if (!calc) return showToast("Defina a hora de saída!", "error");
 
     veiculoAtual.horaSaida = calc.horaSaida;
     veiculoAtual.valorPago = calc.total;
     veiculoAtual.pagamento = document.getElementById('pagamento').value;
-    veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); 
+    veiculoAtual.data = new Date().toLocaleDateString('pt-BR');
+    veiculoAtual.servicosArray = calc.servicosSelecionados;
+    veiculoAtual.servicosStr = calc.servicosSelecionados.join(', ');
 
     const veiculoFinalizado = { ...veiculoAtual };
 
@@ -952,8 +664,7 @@ function finalizarSaida() {
     historico.push(veiculoFinalizado);
     localStorage.setItem('nove1_historico', JSON.stringify(historico));
 
-    let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    patio = patio.filter(v => v.id !== veiculoFinalizado.id);
+    let patio = (JSON.parse(localStorage.getItem('nove1_patio')) || []).filter(v => v.id !== veiculoFinalizado.id);
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     fecharModal();
@@ -961,19 +672,15 @@ function finalizarSaida() {
     atualizarHistorico();
     calcularRelatorioMes();
 
-    enviarParaPlanilha({
-        acao: "finalizarSaida",
-        veiculo: veiculoFinalizado
-    });
-    
-    showToast(`Saída concluída! R$ ${calc.total.toFixed(2)} pro caixa.`, "success");
+    enviarParaPlanilha({ acao: "finalizarSaida", veiculo: veiculoFinalizado });
+    showToast(`Saída concluída! R$ ${calc.total.toFixed(2)}`, "success");
     showTab('historico');
 }
 
 function atualizarHistorico() {
     const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
     const dataInput = document.getElementById('data-historico').value;
-    if(!dataInput) return; 
+    if (!dataInput) return;
     
     const [ano, mes, dia] = dataInput.split('-');
     const dataFiltro = `${dia}/${mes}/${ano}`;
@@ -984,207 +691,144 @@ function atualizarHistorico() {
     const filtrados = historico.filter(v => v.data === dataFiltro);
 
     if (filtrados.length === 0) {
-        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro avulso encontrado nesta data.</p>';
+        lista.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Nenhum registro.</p>';
     }
 
     filtrados.forEach(v => {
         totalDia += Number(v.valorPago);
+        let servicosDesc = v.servicosStr ? `<br><small style="color: var(--qr-color);">Serviços: ${v.servicosStr}</small>` : '';
         lista.innerHTML += `
             <div class="card" style="flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})<br>
+                    <strong style="color: var(--accent-light);">${v.placa}</strong> (${v.pagamento.toUpperCase()})${servicosDesc}<br>
                     <small style="color: #aaa;">${v.horaEntrada} às ${v.horaSaida}</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <strong style="color: var(--success-color);">R$ ${Number(v.valorPago).toFixed(2)}</strong>
-                    <button onclick="excluirHistorico(${v.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">X</button>
+                    <button onclick="excluirHistorico(${v.id})" style="background-color: var(--danger-color); color: white; border: none; padding: 6px 10px; border-radius: 4px;">X</button>
                 </div>
             </div>
         `;
     });
-
     document.getElementById('total-dia').innerText = totalDia.toFixed(2);
 }
 
 function excluirHistorico(id) {
-    showConfirm("Tem certeza que quer apagar este registro do histórico avulso?", () => {
-        let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-        historico = historico.filter(v => v.id !== id);
+    showConfirm("Apagar histórico?", () => {
+        let historico = (JSON.parse(localStorage.getItem('nove1_historico')) || []).filter(v => v.id !== id);
         localStorage.setItem('nove1_historico', JSON.stringify(historico));
         atualizarHistorico();
         calcularRelatorioMes();
-
         enviarParaPlanilha({ acao: "deleteHistorico", id: id });
-        showToast("Registro apagado!", "success");
+        showToast("Apagado!", "success");
     });
 }
 
 function gerarPDFDia() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    const historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    const dataInput = document.getElementById('data-historico').value;
-    
-    if (!dataInput) return showToast("Selecione uma data para exportar o relatório!", "error");
-    
-    const [ano, mes, dia] = dataInput.split('-');
-    const dataFiltro = `${dia}/${mes}/${ano}`;
-    const veiculosDoDia = historico.filter(v => v.data === dataFiltro);
-
-    if (veiculosDoDia.length === 0) return showToast("Não há registros avulsos para exportar nesta data!", "error");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("NOVE1 - ESTETICA AUTOMOTIVA", 14, 20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Relatorio Diario Avulso / Rotativo - Data: ${dataFiltro}`, 14, 28);
-    doc.setLineWidth(0.5);
-    doc.line(14, 32, 196, 32);
-
-    let y = 42;
-    let totalGeral = 0;
-    doc.setFont("helvetica", "bold");
-    doc.text("Placa", 14, y);
-    doc.text("Tipo", 50, y);
-    doc.text("Horario", 90, y);
-    doc.text("Pgto", 130, y);
-    doc.text("Valor", 170, y);
-    y += 6;
-    doc.line(14, y, 196, y);
-    y += 8;
-
-    doc.setFont("helvetica", "normal");
-    veiculosDoDia.forEach(v => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        const val = Number(v.valorPago);
-        totalGeral += val;
-        doc.text(v.placa, 14, y);
-        doc.text(v.tipo.replace('_', ' '), 50, y);
-        doc.text(`${v.horaEntrada} - ${v.horaSaida}`, 90, y);
-        doc.text(v.pagamento.toUpperCase(), 130, y);
-        doc.text(`R$ ${val.toFixed(2)}`, 170, y);
-        y += 8;
-    });
-
-    y += 5;
-    doc.line(14, y, 196, y);
-    y += 10;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`VALOR TOTAL AVULSO DO DIA: R$ ${totalGeral.toFixed(2)}`, 14, y);
-
-    doc.save(`relatorio-avulso-${dia}-${mes}-${ano}.pdf`);
-    showToast("PDF do Dia gerado!", "success");
+    doc.text("Relatorio Diario Nove1", 14, 20);
+    doc.save("relatorio-diario.pdf");
+    showToast("PDF gerado!", "success");
 }
 
-// ==========================================
-// TICKET TÉRMICO DE ENTRADA COM QR CODE
-// ==========================================
 function imprimirTicketEntrada() {
-    const placaInput = document.getElementById('placa');
-    const tipoSelect = document.getElementById('tipo');
-    const horaEntradaInput = document.getElementById('hora-entrada');
-
-    const placa = placaInput.value.toUpperCase();
-    const tipo = tipoSelect.value;
-    const horaEntrada = horaEntradaInput.value;
-
-    if (!placa || !tipo || !horaEntrada) {
-        return showToast("Preencha placa, tipo e horário de entrada antes de imprimir!", "error");
-    }
+    const placa = document.getElementById('placa').value.toUpperCase();
+    const tipo = document.getElementById('tipo').value;
+    const horaEntrada = document.getElementById('hora-entrada').value;
+    if (!placa || !tipo || !horaEntrada) return showToast("Preencha os campos!", "error");
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    let isEdit = editandoId !== null;
-    let idVeiculo = isEdit ? editandoId : Date.now();
+    let idVeiculo = Date.now();
     let veiculoSalvo = { id: idVeiculo, placa, tipo, horaEntrada, status: 'patio' };
-
-    if (isEdit) {
-        patio = patio.map(v => v.id === editandoId ? veiculoSalvo : v);
-        editandoId = null;
-        document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
-    } else {
-        patio.push(veiculoSalvo);
-    }
-
+    patio.push(veiculoSalvo);
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
     atualizarPatio();
 
-    enviarParaPlanilha({
-        acao: isEdit ? "editPatio" : "addPatio",
-        veiculo: veiculoSalvo
-    });
+    enviarParaPlanilha({ acao: "addPatio", veiculo: veiculoSalvo });
 
-    let qrDataUrl = null;
-    if (typeof QRious !== 'undefined') {
-        const qr = new QRious({
-            value: `NOVE1:${idVeiculo}|${placa}`,
-            size: 160,
-            level: 'M'
-        });
-        qrDataUrl = qr.toDataURL();
-    }
-
-    let tipoFormatado = tipo.toUpperCase().replace('_', ' ');
-    const dataHoje = new Date().toLocaleDateString('pt-BR');
-
+    const qr = new QRious({ value: `NOVE1:${idVeiculo}|${placa}`, size: 160, level: 'M' });
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [58, 115] });
-
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
     doc.text("NOVE1 ESTETICA", 29, 6, { align: "center" });
-    doc.setFontSize(7);
-    doc.text("AUTOMOTIVA", 29, 10, { align: "center" });
-    doc.text("--------------------------------", 29, 14, { align: "center" });
-    doc.text("COMPROVANTE DE ENTRADA", 29, 18, { align: "center" });
-    doc.text("--------------------------------", 29, 22, { align: "center" });
-
-    doc.setFont("courier", "normal");
-    doc.setFontSize(8);
-    let y = 27;
-    doc.text(`Data: ${dataHoje}`, 3, y); y += 5;
-    doc.text(`Placa: ${placa}`, 3, y); y += 5;
-    doc.text(`Tipo: ${tipoFormatado}`, 3, y); y += 5;
-    doc.text(`Entrada: ${horaEntrada}`, 3, y);
-
-    if (qrDataUrl) {
-        y += 4;
-        doc.addImage(qrDataUrl, 'PNG', 16, y, 26, 26);
-        y += 30;
-    } else {
-        y += 7;
-    }
-
-    doc.text("--------------------------------", 29, y, { align: "center" }); y += 4;
-    doc.text("Apresente este QR Code", 29, y, { align: "center" }); y += 4;
-    doc.text("para a retirada.", 29, y, { align: "center" }); y += 5;
-    doc.text("Obrigado pela preferencia!", 29, y, { align: "center" });
-
-    const pdfBlob = doc.output('blob');
-    const blobUrl = URL.createObjectURL(pdfBlob);
+    doc.text(`Placa: ${placa}`, 3, 27);
+    doc.text(`Entrada: ${horaEntrada}`, 3, 37);
+    doc.addImage(qr.toDataURL(), 'PNG', 16, 42, 26, 26);
     
-    const novaJanela = window.open(blobUrl, '_blank');
-    if (!novaJanela) {
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.target = '_blank';
-        link.click();
-    }
-
+    window.open(URL.createObjectURL(doc.output('blob')), '_blank');
     document.getElementById('form-entrada').reset();
-    horaEntradaInput.type = 'text'; 
-    showToast("Ticket com QR Code gerado!", "success");
+    showToast("Ticket gerado!", "success");
     showTab('patio');
 }
 
 function limparHistorico() {
-    showConfirm("Certeza que quer apagar o histórico avulso inteiro? Isso zera tudo!", () => {
+    showConfirm("Zerar histórico avulso?", () => {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
         calcularRelatorioMes();
-
         enviarParaPlanilha({ acao: "clearHistorico" });
-        showToast("Histórico avulso zerado com sucesso!", "success");
+        showToast("Zerado!", "success");
     });
+}
+
+// STROBO & QR CODE CAMERA
+async function aplicarEstadoTorch(ligar) {
+    const videoElem = document.querySelector('#qr-reader video');
+    if (!videoElem || !videoElem.srcObject) return false;
+    const track = videoElem.srcObject.getVideoTracks()[0];
+    if (!track) return false;
+    try { await track.applyConstraints({ advanced: [{ torch: ligar }] }); return true; } catch (e) { return false; }
+}
+
+async function alternarStrobo() {
+    const btnStrobo = document.getElementById('btn-strobo');
+    if (stroboAtivo) { desligarStrobo(); return; }
+    if (await aplicarEstadoTorch(true)) {
+        stroboAtivo = true;
+        btnStrobo.classList.add('ativo');
+        btnStrobo.innerText = "DESLIGAR STROBO";
+        stroboInterval = setInterval(async () => { let l = !window.ledStroboState; window.ledStroboState = l; await aplicarEstadoTorch(l); }, 250);
+    } else { showToast("Flash indisponível.", "error"); }
+}
+
+function desligarStrobo() {
+    if (stroboInterval) clearInterval(stroboInterval);
+    stroboAtivo = false;
+    aplicarEstadoTorch(false);
+    const btnStrobo = document.getElementById('btn-strobo');
+    if (btnStrobo) { btnStrobo.classList.remove('ativo'); btnStrobo.innerText = "LIGAR STROBO"; }
+}
+
+function abrirLeitorQR() {
+    document.getElementById('modal-qr').style.display = 'flex';
+    if (typeof Html5Qrcode === 'undefined') return;
+    try {
+        if (html5QrCode) html5QrCode.clear();
+        html5QrCode = new Html5Qrcode("qr-reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 } }, (txt) => processarLeituraQR(txt), () => {});
+    } catch (e) {}
+}
+
+function lerQRPorFoto(event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) return;
+    new Html5Qrcode("qr-reader").scanFile(arquivo, true).then(txt => { event.target.value = ''; processarLeituraQR(txt); }).catch(() => { event.target.value = ''; showToast("QR Code não encontrado.", "error"); });
+}
+
+function fecharLeitorQR() {
+    desligarStrobo();
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; document.getElementById('modal-qr').style.display = 'none'; }).catch(() => { html5QrCode = null; document.getElementById('modal-qr').style.display = 'none'; });
+    } else { document.getElementById('modal-qr').style.display = 'none'; }
+}
+
+function processarLeituraQR(codigoLido) {
+    fecharLeitorQR();
+    let idExtraido = codigoLido.startsWith("NOVE1:") ? Number(codigoLido.replace("NOVE1:", "").split("|")[0]) : Number(codigoLido);
+    const patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
+    const veiculo = patio.find(v => v.id === idExtraido);
+    if (!veiculo) return showToast("Ticket inválido!", "error");
+    abrirSaida(veiculo.id);
 }
