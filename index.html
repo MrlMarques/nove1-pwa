@@ -29,6 +29,10 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 <span>MENSAL</span>
             </button>
+            <button type="button" data-tab="servicos">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                <span>SERVIÇOS</span>
+            </button>
             <button type="button" data-tab="historico">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 <span>HISTÓRICO</span>
@@ -41,16 +45,16 @@
     </header>
 
     <main>
-        <!-- ABA ENTRADA (AVULSO / ROTATIVO) -->
+        <!-- ABA ENTRADA -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
                 <input type="text" id="placa" placeholder="Placa (ex: ABC-1234)" required autocomplete="off">
                 <select id="tipo" required>
-                    <option value="" disabled selected>Tipo de Veículo</option>
-                    <option value="moto">Moto (R$ 2,00/h)</option>
-                    <option value="carro">Carro (R$ 4,00/h)</option>
-                    <option value="carro_grande">Carro Grande (R$ 6,00/h)</option>
+                    <option value="" disabled selected>Porte do Veículo (P, M, G)</option>
+                    <option value="moto">Moto (Pequeno)</option>
+                    <option value="carro">Carro (Médio)</option>
+                    <option value="carro_grande">Carro Grande (Grande)</option>
                 </select>
                 <input type="text" id="hora-entrada" placeholder="Horário de Entrada" onfocus="this.type='time'; this.value = new Date().toTimeString().substring(0,5);" required>
                 <button type="submit" class="btn-success">Salvar Entrada</button>
@@ -75,7 +79,7 @@
                 <input type="text" id="mensalista-nome" placeholder="Nome do Cliente" required autocomplete="off">
                 <input type="text" id="mensalista-placa" placeholder="Placa (ex: ABC-1234)" required autocomplete="off">
                 <select id="mensalista-tipo" required>
-                    <option value="" disabled selected>Tipo de Veículo</option>
+                    <option value="" disabled selected>Porte do Veículo</option>
                     <option value="moto">Moto</option>
                     <option value="carro">Carro</option>
                     <option value="carro_grande">Carro Grande</option>
@@ -91,7 +95,36 @@
             <div id="lista-mensalistas"></div>
         </section>
 
-        <!-- ABA HISTÓRICO (AVULSO / ROTATIVO POR DATA) -->
+        <!-- ABA SERVIÇOS EXTRAS COM SELEÇÃO DE PORTE -->
+        <section id="servicos" class="tab">
+            <h2>Tabela de Serviços Extras</h2>
+            <form id="form-servico" style="margin-bottom: 25px;">
+                <input type="text" id="servico-nome" placeholder="Nome do Serviço (ex: Lavagem Essencial)" required autocomplete="off">
+                
+                <div style="display: flex; gap: 10px;">
+                    <select id="servico-porte" required style="flex: 1;">
+                        <option value="GERAL" selected>Porte: Geral / Único</option>
+                        <option value="P">Porte: P (Pequeno)</option>
+                        <option value="M">Porte: M (Médio)</option>
+                        <option value="G">Porte: G (Grande)</option>
+                    </select>
+                    <input type="text" inputmode="numeric" id="servico-valor" placeholder="Valor (R$ 0,00)" required autocomplete="off" style="flex: 1;">
+                </div>
+
+                <button type="submit" id="btn-salvar-servico" class="btn-success">Cadastrar Serviço</button>
+            </form>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button type="button" onclick="carregarServicosPadraoTabela()" class="btn-qr" style="font-size: 0.65em; border-color: var(--qr-color); color: var(--qr-color);">
+                    📥 CARREGAR SERVIÇOS DO CATÁLOGO OFICIAL
+                </button>
+            </div>
+
+            <h3 style="color: var(--accent-light); font-size: 0.9em; margin-bottom: 12px; text-align: center;">Serviços Cadastrados</h3>
+            <div id="lista-servicos"></div>
+        </section>
+
+        <!-- ABA HISTÓRICO -->
         <section id="historico" class="tab">
             <h2>Histórico Avulso por Data</h2>
             <input type="date" id="data-historico" onchange="atualizarHistorico()">
@@ -101,7 +134,7 @@
             <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico Avulso</button>
         </section>
 
-        <!-- ABA RELATÓRIOS (SEPARADO: AVULSO VS MENSALISTAS) -->
+        <!-- ABA RELATÓRIOS -->
         <section id="relatorios" class="tab">
             <h2>Relatório Mensal</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
@@ -109,7 +142,6 @@
                 <input type="month" id="mes-relatorio" onchange="calcularRelatorioMes()">
             </div>
 
-            <!-- RESUMO FINANCEIRO SEPARADO -->
             <div class="painel-resumo-mensal">
                 <div class="linha-resumo">
                     <span>Avulso / Rotativo:</span>
@@ -127,22 +159,19 @@
 
             <button onclick="gerarPDFMes()" style="margin-bottom: 20px; width: 100%;" class="btn-success">Exportar Mês em PDF</button>
 
-            <!-- SEÇÃO 1: LISTA AVULSO / ROTATIVO -->
             <h3 class="subtitulo-relatorio">1. Avulso / Rotativo (<span id="qtd-mes-avulso">0</span>)</h3>
             <div id="lista-mes-avulso" style="margin-bottom: 20px;"></div>
 
-            <!-- SEÇÃO 2: LISTA MENSALISTAS -->
             <h3 class="subtitulo-relatorio" style="border-color: var(--qr-color); color: var(--qr-color);">2. Mensalistas Pagos (<span id="qtd-mes-mensalistas">0</span>)</h3>
             <div id="lista-mes-mensalistas"></div>
         </section>
     </main>
 
-    <!-- Rodapé -->
     <footer class="rodape-brabo">
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
 
-    <!-- MODAL DAR BAIXA DE MENSALISTA -->
+    <!-- MODAL DE BAIXA DE MENSALISTA -->
     <div id="modal-baixa-mensalista" class="modal">
         <div class="modal-content">
             <h3 style="color: var(--accent-light); font-size: 0.95em;">Baixa de Mensalidade</h3>
@@ -166,12 +195,12 @@
         </div>
     </div>
 
-    <!-- MODAL LEITOR DE QR CODE COM STROBO -->
+    <!-- MODAL QR CODE -->
     <div id="modal-qr" class="modal">
         <div class="modal-content" style="text-align: center;">
             <h3 style="color: var(--accent-light); font-size: 0.95em;">Aponte para o Ticket</h3>
             <div id="qr-reader" style="min-height: 220px;"></div>
-            <p style="font-size: 0.8em; color: #aaa;">Posicione o QR Code do comprovante dentro do quadrado.</p>
+            <p style="font-size: 0.8em; color: #aaa;">Posicione o QR Code dentro do quadrado.</p>
             <button type="button" id="btn-strobo" onclick="alternarStrobo()" class="btn-strobo">LIGAR STROBO</button>
             <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display: none;" onchange="lerQRPorFoto(event)">
             <button type="button" onclick="document.getElementById('qr-file-input').click()" class="btn-success" style="font-size: 0.72em;">Ler por Foto do Ticket</button>
@@ -179,11 +208,18 @@
         </div>
     </div>
 
-    <!-- MODAL DE SAÍDA (AVULSO) -->
+    <!-- MODAL DE SAÍDA (AVULSO + SERVIÇOS COMPativeis com o PORTE) -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
+            <p id="modal-info-porte" style="font-size: 0.85em; color: var(--accent-light); margin-top: -5px;"></p>
             <input type="time" id="hora-saida" onchange="calcularValor()">
+            
+            <label style="font-size: 0.8em; color: var(--qr-color); margin-top: 5px;">Serviços Extras (Filtrados para o Porte):</label>
+            <div id="modal-servicos-lista" style="max-height: 140px; overflow-y: auto; background: #111; padding: 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <!-- Preenchido via JS filtrando P, M, G ou GERAL -->
+            </div>
+
             <input type="number" id="desconto" placeholder="Aplicar desconto (R$)" step="0.50" oninput="calcularValor()">
             <select id="pagamento">
                 <option value="pix">PIX</option>
@@ -197,7 +233,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO CUSTOMIZADO -->
+    <!-- MODAL DE CONFIRMAÇÃO -->
     <div id="modal-confirm" class="modal">
         <div class="modal-content" style="text-align: center;">
             <h3 id="confirm-msg" style="margin-bottom: 20px; font-size: 1em; color: var(--text-color);"></h3>
@@ -208,9 +244,7 @@
         </div>
     </div>
 
-    <!-- CONTÊINER DOS TOASTS -->
     <div id="toast-container"></div>
-
     <script src="app.js"></script>
 </body>
 </html>
