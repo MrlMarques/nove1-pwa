@@ -85,26 +85,25 @@ function inicializarServicosPadraoSeVazio() {
     let servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
     if (servicos.length > 0) return;
 
-    // Dados extraídos exatamente das imagens dos panfletos oficiais do Nove1[cite: 2, 3, 4]
     servicos = [
-        { id: 101, nome: "Lavagem Essencial", porte: "P", valor: 60.00 },[cite: 4]
-        { id: 102, nome: "Lavagem Essencial", porte: "M", valor: 70.00 },[cite: 4]
-        { id: 103, nome: "Lavagem Essencial", porte: "G", valor: 80.00 },[cite: 4]
-        { id: 104, nome: "Lavagem PLUS", porte: "P", valor: 140.00 },[cite: 4]
-        { id: 105, nome: "Lavagem PLUS", porte: "M", valor: 150.00 },[cite: 4]
-        { id: 106, nome: "Lavagem PLUS", porte: "G", valor: 160.00 },[cite: 4]
-        { id: 107, nome: "Lavagem Detalhada", porte: "GERAL", valor: 300.00 },[cite: 4]
-        { id: 108, nome: "Lavagem de Motor", porte: "GERAL", valor: 150.00 },[cite: 2]
-        { id: 109, nome: "Remoção de Chuva Ácida", porte: "GERAL", valor: 150.00 },[cite: 2]
-        { id: 110, nome: "Tratamento de Faróis", porte: "GERAL", valor: 150.00 },[cite: 3]
-        { id: 111, nome: "Enceramento Técnico", porte: "GERAL", valor: 200.00 },[cite: 3]
-        { id: 112, nome: "Polimento Técnico", porte: "GERAL", valor: 500.00 }[cite: 3]
+        { id: 101, nome: "Lavagem Essencial", porte: "P", valor: 60.00 },
+        { id: 102, nome: "Lavagem Essencial", porte: "M", valor: 70.00 },
+        { id: 103, nome: "Lavagem Essencial", porte: "G", valor: 80.00 },
+        { id: 104, nome: "Lavagem PLUS", porte: "P", valor: 140.00 },
+        { id: 105, nome: "Lavagem PLUS", porte: "M", valor: 150.00 },
+        { id: 106, nome: "Lavagem PLUS", porte: "G", valor: 160.00 },
+        { id: 107, nome: "Lavagem Detalhada", porte: "GERAL", valor: 300.00 },
+        { id: 108, nome: "Lavagem de Motor", porte: "GERAL", valor: 150.00 },
+        { id: 109, nome: "Remoção de Chuva Ácida", porte: "GERAL", valor: 150.00 },
+        { id: 110, nome: "Tratamento de Faróis", porte: "GERAL", valor: 150.00 },
+        { id: 111, nome: "Enceramento Técnico", porte: "GERAL", valor: 200.00 },
+        { id: 112, nome: "Polimento Técnico", porte: "GERAL", valor: 500.00 }
     ];
     localStorage.setItem('nove1_servicos', JSON.stringify(servicos));
 }
 
 function carregarServicosPadraoTabela() {
-    showConfirm("Deseja restaurar os serviços oficiais dos panfletos (Lavagem Essencial P/M/G, Motor, Polimento, etc)?", () => {
+    showConfirm("Deseja restaurar os serviços oficiais dos panfletos?", () => {
         localStorage.removeItem('nove1_servicos');
         inicializarServicosPadraoSeVazio();
         atualizarServicos();
@@ -513,7 +512,7 @@ function showTab(tabId, btnElement) {
 document.getElementById('form-entrada').addEventListener('submit', (e) => {
     e.preventDefault();
     const placa = document.getElementById('placa').value.toUpperCase();
-    const tipo = document.getElementById('tipo').value; // 'moto', 'carro', 'carro_grande'
+    const tipo = document.getElementById('tipo').value;
     const horaEntrada = document.getElementById('hora-entrada').value;
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
@@ -575,15 +574,12 @@ function abrirSaida(id) {
     if (!veiculoAtual) return;
 
     document.getElementById('modal-placa').innerText = veiculoAtual.placa;
-    
-    // Mapeia o tipo do veículo cadastrado para a letra de Porte correspondente (moto=P, carro=M, carro_grande=G)
     let letraPorte = veiculoAtual.tipo === 'moto' ? 'P' : (veiculoAtual.tipo === 'carro' ? 'M' : 'G');
     document.getElementById('modal-info-porte').innerText = `Veículo classificado como Porte: ${letraPorte}`;
 
     document.getElementById('desconto').value = '';
     document.getElementById('hora-saida').value = new Date().toTimeString().substring(0, 5);
 
-    // Carrega e filtra os serviços extras compatíveis com o porte do veículo ou do tipo GERAL
     const servicos = JSON.parse(localStorage.getItem('nove1_servicos')) || [];
     const containerServicos = document.getElementById('modal-servicos-lista');
     containerServicos.innerHTML = '';
