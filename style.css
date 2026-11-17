@@ -115,6 +115,26 @@ button { padding: 12px; background-color: var(--accent-light); color: var(--bg-c
 button.btn-danger { background-color: var(--danger-color); color: white; }
 button.btn-success { background-color: var(--accent-dark); color: white; }
 
+/* Botão principal de Leitura de QR Code no topo do Pátio */
+.btn-qr {
+    width: 100%;
+    margin-bottom: 15px;
+    background-color: transparent;
+    border: 2px dashed var(--accent-light);
+    color: var(--accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.72em;
+    padding: 14px 10px;
+}
+
+.btn-qr svg {
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
 /* Botão de Strobo no modal do QR Code */
 .btn-strobo {
     background-color: #222;
