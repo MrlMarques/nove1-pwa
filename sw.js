@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nove1-cache-v39'; 
+const CACHE_NAME = 'nove1-cache-v40'; 
 const urlsToCache = [
   './',
   './index.html',
