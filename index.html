@@ -16,26 +16,26 @@
 
     <header>
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
-        <nav>
+        <nav class="menu-navegacao">
             <button type="button" class="active" data-tab="entrada">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                ENTRADA
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>ENTRADA</span>
             </button>
             <button type="button" data-tab="patio">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                PÁTIO <span id="badge-patio" class="badge-count">0</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                <span>PÁTIO</span> <span id="badge-patio" class="badge-count">0</span>
             </button>
             <button type="button" data-tab="mensalistas">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                MENSAL
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>MENSAL</span>
             </button>
             <button type="button" data-tab="historico">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                HISTÓRICO
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span>HISTÓRICO</span>
             </button>
             <button type="button" data-tab="relatorios">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                RELATÓRIOS
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span>RELATÓRIOS</span>
             </button>
         </nav>
     </header>
@@ -82,7 +82,7 @@
                 </select>
                 <div style="display: flex; gap: 10px;">
                     <input type="number" id="mensalista-vencimento" placeholder="Dia Venc. (ex: 10)" min="1" max="31" required>
-                    <input type="number" id="mensalista-valor" placeholder="Valor Mensal (R$)" step="0.50" min="0" required>
+                    <input type="text" inputmode="numeric" id="mensalista-valor" placeholder="R$ 0,00" required autocomplete="off">
                 </div>
                 <button type="submit" id="btn-salvar-mensalista" class="btn-success">Cadastrar Mensalista</button>
             </form>
@@ -151,8 +151,8 @@
             <label style="font-size: 0.8em; color: #aaa;">Mês de Referência:</label>
             <input type="month" id="baixa-mensalista-mes">
 
-            <label style="font-size: 0.8em; color: #aaa;">Valor Pago (R$):</label>
-            <input type="number" id="baixa-mensalista-valor" step="0.50">
+            <label style="font-size: 0.8em; color: #aaa;">Valor Pago:</label>
+            <input type="text" inputmode="numeric" id="baixa-mensalista-valor" placeholder="R$ 0,00" autocomplete="off">
 
             <label style="font-size: 0.8em; color: #aaa;">Forma de Pagamento:</label>
             <select id="baixa-mensalista-pagamento">
