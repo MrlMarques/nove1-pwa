@@ -15,6 +15,28 @@ let html5QrCode = null;
 let stroboInterval = null;
 let stroboAtivo = false;
 
+// ==========================================
+// MÁSCARA DE MOEDA (R$ 0,00)
+// ==========================================
+function formatarMoedaInput(input) {
+    let apenasNumeros = input.value.replace(/\D/g, "");
+    if (!apenasNumeros) {
+        input.value = "";
+        return;
+    }
+    let valorNumerico = Number(apenasNumeros) / 100;
+    input.value = valorNumerico.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+}
+
+function extrairValorNumerico(textoMoeda) {
+    if (typeof textoMoeda === 'number') return textoMoeda;
+    const limpo = String(textoMoeda).replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(limpo) || 0;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const hoje = new Date();
     document.getElementById('data-historico').valueAsDate = hoje;
@@ -58,6 +80,17 @@ document.addEventListener("DOMContentLoaded", () => {
             if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 7);
             this.value = val;
         });
+    }
+
+    // MÁSCARA DE MOEDA (R$) NOS CAMPOS DE MENSALISTA
+    const campoValorCadastro = document.getElementById('mensalista-valor');
+    const campoValorBaixa = document.getElementById('baixa-mensalista-valor');
+
+    if (campoValorCadastro) {
+        campoValorCadastro.addEventListener('input', function() { formatarMoedaInput(this); });
+    }
+    if (campoValorBaixa) {
+        campoValorBaixa.addEventListener('input', function() { formatarMoedaInput(this); });
     }
 });
 
@@ -119,7 +152,11 @@ document.getElementById('form-mensalista').addEventListener('submit', (e) => {
     const placa = document.getElementById('mensalista-placa').value.toUpperCase();
     const tipo = document.getElementById('mensalista-tipo').value;
     const diaVencimento = Number(document.getElementById('mensalista-vencimento').value);
-    const valorMensal = Number(document.getElementById('mensalista-valor').value);
+    const valorMensal = extrairValorNumerico(document.getElementById('mensalista-valor').value);
+
+    if (valorMensal <= 0) {
+        return showToast("Informe um valor mensal válido!", "error");
+    }
 
     let mensalistas = JSON.parse(localStorage.getItem('nove1_mensalistas')) || [];
     let isEdit = editandoMensalistaId !== null;
@@ -190,13 +227,18 @@ function atualizarMensalistas() {
             ? `<span class="status-badge status-pago">PAGO (${mesAtual.split('-').reverse().join('/')})</span>`
             : `<span class="status-badge status-pendente">PENDENTE (Venc. dia ${m.diaVencimento})</span>`;
 
+        const valorFormatado = Number(m.valorMensal).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+
         lista.innerHTML += `
             <div class="card card-mensalista">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
                     <div>
                         <strong style="font-size: 1.05em; color: var(--qr-color);">${m.nome}</strong><br>
                         <strong style="color: var(--accent-light);">${m.placa}</strong> — <span style="text-transform: capitalize;">${m.tipo.replace('_', ' ')}</span><br>
-                        <small style="color: #aaa;">Mensalidade: R$ ${Number(m.valorMensal).toFixed(2)} | Vencimento: Dia ${m.diaVencimento}</small>
+                        <small style="color: #aaa;">Mensalidade: ${valorFormatado} | Vencimento: Dia ${m.diaVencimento}</small>
                     </div>
                     <div>${badgeStatus}</div>
                 </div>
@@ -219,7 +261,10 @@ function editarMensalista(id) {
     document.getElementById('mensalista-placa').value = m.placa;
     document.getElementById('mensalista-tipo').value = m.tipo;
     document.getElementById('mensalista-vencimento').value = m.diaVencimento;
-    document.getElementById('mensalista-valor').value = m.valorMensal;
+    document.getElementById('mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
 
     editandoMensalistaId = id;
     document.getElementById('btn-salvar-mensalista').innerText = "Salvar Edição";
@@ -246,7 +291,10 @@ function abrirModalBaixaMensalista(id) {
     mensalistaParaBaixa = m;
     document.getElementById('baixa-mensalista-info').innerHTML = `<strong>${m.nome}</strong> — Placa: <strong>${m.placa}</strong>`;
     document.getElementById('baixa-mensalista-mes').value = obterMesAtualFormatado();
-    document.getElementById('baixa-mensalista-valor').value = Number(m.valorMensal).toFixed(2);
+    document.getElementById('baixa-mensalista-valor').value = Number(m.valorMensal).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
     document.getElementById('baixa-mensalista-pagamento').value = "pix";
 
     document.getElementById('modal-baixa-mensalista').style.display = 'flex';
@@ -261,10 +309,10 @@ function confirmarBaixaMensalista() {
     if (!mensalistaParaBaixa) return;
 
     const mesRef = document.getElementById('baixa-mensalista-mes').value;
-    const valorPago = Number(document.getElementById('baixa-mensalista-valor').value);
+    const valorPago = extrairValorNumerico(document.getElementById('baixa-mensalista-valor').value);
     const pagamento = document.getElementById('baixa-mensalista-pagamento').value;
 
-    if (!mesRef || isNaN(valorPago) || valorPago <= 0) {
+    if (!mesRef || valorPago <= 0) {
         return showToast("Preencha o mês de referência e um valor válido!", "error");
     }
 
