@@ -1,3 +1,6 @@
+// URL OFICIAL DO GOOGLE APPS SCRIPT (NOVE1 - BANCO DE DADOS):
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzzhL5djbUTWMTFx1GHLyCo2p_Cw9Y2dwpldPB0QE6yzvphzmV-mdUPx0Hc24VBjEi3-Q/exec";
+
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registrado!"));
 }
@@ -20,9 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
         inputMes.value = mesAtual;
     }
     
+    // Carrega o cache local na hora para não travar a tela
     atualizarPatio();
     atualizarHistorico();
     calcularRelatorioMes();
+
+    // Puxa os dados atualizados do Google Planilhas em seguida
+    sincronizarComNuvem();
 
     // VÍNCULO BLINDADO DO MENU
     const botoesMenu = document.querySelectorAll('nav button');
@@ -34,7 +41,59 @@ document.addEventListener("DOMContentLoaded", () => {
             showTab(abasIds[index], btn);
         });
     });
+
+    // VÍNCULO BLINDADO DO BOTÃO SUPERIOR DE QR CODE
+    const btnAbrirQr = document.getElementById('btn-abrir-qr');
+    if (btnAbrirQr) {
+        btnAbrirQr.addEventListener('click', abrirLeitorQR);
+    }
 });
+
+// ==========================================
+// SINCRONIZAÇÃO COM GOOGLE PLANILHAS
+// ==========================================
+function urlConfigurada() {
+    return GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https://script.google.com/");
+}
+
+async function sincronizarComNuvem(silencioso = true) {
+    if (!urlConfigurada()) return;
+
+    try {
+        const resposta = await fetch(GOOGLE_SCRIPT_URL);
+        const dados = await resposta.json();
+
+        if (dados.status === "ok") {
+            localStorage.setItem('nove1_patio', JSON.stringify(dados.patio || []));
+            localStorage.setItem('nove1_historico', JSON.stringify(dados.historico || []));
+
+            atualizarPatio();
+            atualizarHistorico();
+            calcularRelatorioMes();
+
+            if (!silencioso) {
+                showToast("Dados sincronizados com a planilha!", "success");
+            }
+        }
+    } catch (erro) {
+        console.warn("Modo offline ativo ou falha na sincronização:", erro);
+    }
+}
+
+async function enviarParaPlanilha(payload) {
+    if (!urlConfigurada()) return;
+
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+        });
+    } catch (erro) {
+        console.error("Erro ao gravar na planilha:", erro);
+        showToast("Salvo no aparelho (sem conexão com a planilha).", "error");
+    }
+}
 
 // ==========================================
 // CONTROLE DO STROBO / FLASH DA CÂMERA
@@ -363,13 +422,16 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
     let isEdit = editandoId !== null;
+    let veiculoSalvo = null;
 
     if (isEdit) {
-        patio = patio.map(v => v.id === editandoId ? { ...v, placa, tipo, horaEntrada } : v);
+        veiculoSalvo = { id: editandoId, placa, tipo, horaEntrada, status: 'patio' };
+        patio = patio.map(v => v.id === editandoId ? veiculoSalvo : v);
         editandoId = null;
         document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
     } else {
-        patio.push({ id: Date.now(), placa, tipo, horaEntrada, status: 'patio' });
+        veiculoSalvo = { id: Date.now(), placa, tipo, horaEntrada, status: 'patio' };
+        patio.push(veiculoSalvo);
     }
 
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
@@ -377,7 +439,12 @@ document.getElementById('form-entrada').addEventListener('submit', (e) => {
     document.getElementById('hora-entrada').type = 'text'; 
     atualizarPatio();
     
-    showToast(isEdit ? "Entrada atualizada com sucesso!" : "Veículo registrado no pátio!", "success");
+    enviarParaPlanilha({
+        acao: isEdit ? "editPatio" : "addPatio",
+        veiculo: veiculoSalvo
+    });
+
+    showToast(isEdit ? "Entrada atualizada!" : "Veículo registrado no pátio!", "success");
     showTab('patio', document.querySelectorAll('nav button')[1]);
 });
 
@@ -433,6 +500,8 @@ function excluirPatio(id) {
         patio = patio.filter(v => v.id !== id);
         localStorage.setItem('nove1_patio', JSON.stringify(patio));
         atualizarPatio();
+
+        enviarParaPlanilha({ acao: "deletePatio", id: id });
         showToast("Veículo removido do pátio!", "success");
     });
 }
@@ -495,18 +564,25 @@ function finalizarSaida() {
     veiculoAtual.pagamento = document.getElementById('pagamento').value;
     veiculoAtual.data = new Date().toLocaleDateString('pt-BR'); 
 
+    const veiculoFinalizado = { ...veiculoAtual };
+
     let historico = JSON.parse(localStorage.getItem('nove1_historico')) || [];
-    historico.push(veiculoAtual);
+    historico.push(veiculoFinalizado);
     localStorage.setItem('nove1_historico', JSON.stringify(historico));
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    patio = patio.filter(v => v.id !== veiculoAtual.id);
+    patio = patio.filter(v => v.id !== veiculoFinalizado.id);
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
 
     fecharModal();
     atualizarPatio();
     atualizarHistorico();
     calcularRelatorioMes();
+
+    enviarParaPlanilha({
+        acao: "finalizarSaida",
+        veiculo: veiculoFinalizado
+    });
     
     showToast(`Saída concluída! R$ ${calc.total.toFixed(2)} pro caixa.`, "success");
     showTab('historico', document.querySelectorAll('nav button')[2]);
@@ -555,6 +631,8 @@ function excluirHistorico(id) {
         localStorage.setItem('nove1_historico', JSON.stringify(historico));
         atualizarHistorico();
         calcularRelatorioMes();
+
+        enviarParaPlanilha({ acao: "deleteHistorico", id: id });
         showToast("Registro apagado!", "success");
     });
 }
@@ -634,24 +712,25 @@ function imprimirTicketEntrada() {
     }
 
     let patio = JSON.parse(localStorage.getItem('nove1_patio')) || [];
-    let idVeiculo = editandoId ? editandoId : Date.now();
+    let isEdit = editandoId !== null;
+    let idVeiculo = isEdit ? editandoId : Date.now();
+    let veiculoSalvo = { id: idVeiculo, placa, tipo, horaEntrada, status: 'patio' };
 
-    if (editandoId) {
-        patio = patio.map(v => {
-            if (v.id === editandoId) {
-                return { ...v, placa, tipo, horaEntrada };
-            }
-            return v;
-        });
+    if (isEdit) {
+        patio = patio.map(v => v.id === editandoId ? veiculoSalvo : v);
         editandoId = null;
         document.querySelector('#form-entrada button[type="submit"]').innerText = "Salvar Entrada";
     } else {
-        const veiculo = { id: idVeiculo, placa, tipo, horaEntrada, status: 'patio' };
-        patio.push(veiculo);
+        patio.push(veiculoSalvo);
     }
 
     localStorage.setItem('nove1_patio', JSON.stringify(patio));
     atualizarPatio();
+
+    enviarParaPlanilha({
+        acao: isEdit ? "editPatio" : "addPatio",
+        veiculo: veiculoSalvo
+    });
 
     let qrDataUrl = null;
     if (typeof QRious !== 'undefined') {
@@ -721,6 +800,8 @@ function limparHistorico() {
         localStorage.removeItem('nove1_historico');
         atualizarHistorico();
         calcularRelatorioMes();
+
+        enviarParaPlanilha({ acao: "clearHistorico" });
         showToast("Histórico zerado com sucesso!", "success");
     });
 }
