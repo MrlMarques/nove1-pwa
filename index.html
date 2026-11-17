@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Biblioteca leve para gerar QR Code no ticket -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <!-- Biblioteca para ler QR Code pela câmera (via Cloudflare CDN) -->
+    <!-- Biblioteca para ler QR Code pela câmera -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -17,19 +17,23 @@
     <header>
         <img src="image_2.png" alt="Nove1 Estética Automotiva" class="logo-header">
         <nav>
-            <button type="button" class="active">
+            <button type="button" class="active" data-tab="entrada">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 ENTRADA
             </button>
-            <button type="button">
+            <button type="button" data-tab="patio">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                 PÁTIO <span id="badge-patio" class="badge-count">0</span>
             </button>
-            <button type="button">
+            <button type="button" data-tab="mensalistas">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                MENSAL
+            </button>
+            <button type="button" data-tab="historico">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 HISTÓRICO
             </button>
-            <button type="button">
+            <button type="button" data-tab="relatorios">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 RELATÓRIOS
             </button>
@@ -37,7 +41,7 @@
     </header>
 
     <main>
-        <!-- ABA ENTRADA -->
+        <!-- ABA ENTRADA (AVULSO / ROTATIVO) -->
         <section id="entrada" class="tab active">
             <h2>Registrar Entrada</h2>
             <form id="form-entrada">
@@ -64,26 +68,72 @@
             <div id="lista-patio"></div>
         </section>
 
-        <!-- ABA HISTÓRICO -->
-        <section id="historico" class="tab">
-            <h2>Histórico por Data</h2>
-            <input type="date" id="data-historico" onchange="atualizarHistorico()">
-            <div class="resumo-dia" style="margin-top: 15px;">TOTAL: R$ <span id="total-dia">0.00</span></div>
-            <div id="lista-historico" style="margin-top: 15px;"></div>
-            <button onclick="gerarPDFDia()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Relatório PDF</button>
-            <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico</button>
+        <!-- ABA MENSALISTAS -->
+        <section id="mensalistas" class="tab">
+            <h2>Gestão de Mensalistas</h2>
+            <form id="form-mensalista" style="margin-bottom: 25px;">
+                <input type="text" id="mensalista-nome" placeholder="Nome do Cliente" required autocomplete="off">
+                <input type="text" id="mensalista-placa" placeholder="Placa (ex: ABC-1234)" required autocomplete="off">
+                <select id="mensalista-tipo" required>
+                    <option value="" disabled selected>Tipo de Veículo</option>
+                    <option value="moto">Moto</option>
+                    <option value="carro">Carro</option>
+                    <option value="carro_grande">Carro Grande</option>
+                </select>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="mensalista-vencimento" placeholder="Dia Venc. (ex: 10)" min="1" max="31" required>
+                    <input type="number" id="mensalista-valor" placeholder="Valor Mensal (R$)" step="0.50" min="0" required>
+                </div>
+                <button type="submit" id="btn-salvar-mensalista" class="btn-success">Cadastrar Mensalista</button>
+            </form>
+
+            <h3 style="color: var(--accent-light); font-size: 0.9em; margin-bottom: 12px; text-align: center;">Clientes Cadastrados</h3>
+            <div id="lista-mensalistas"></div>
         </section>
 
-        <!-- ABA RELATÓRIOS (APENAS POR MÊS) -->
+        <!-- ABA HISTÓRICO (AVULSO / ROTATIVO POR DATA) -->
+        <section id="historico" class="tab">
+            <h2>Histórico Avulso por Data</h2>
+            <input type="date" id="data-historico" onchange="atualizarHistorico()">
+            <div class="resumo-dia" style="margin-top: 15px;">TOTAL AVULSO: R$ <span id="total-dia">0.00</span></div>
+            <div id="lista-historico" style="margin-top: 15px;"></div>
+            <button onclick="gerarPDFDia()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Relatório PDF</button>
+            <button onclick="limparHistorico()" class="btn-danger" style="margin-top: 10px; width: 100%;">Limpar Histórico Avulso</button>
+        </section>
+
+        <!-- ABA RELATÓRIOS (SEPARADO: AVULSO VS MENSALISTAS) -->
         <section id="relatorios" class="tab">
             <h2>Relatório Mensal</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                 <label for="mes-relatorio" style="color: var(--accent-light); font-weight: bold;">Selecione o Mês:</label>
                 <input type="month" id="mes-relatorio" onchange="calcularRelatorioMes()">
             </div>
-            <div class="resumo-dia">TOTAL DO MÊS: R$ <span id="total-mes">0.00</span></div>
-            <div id="lista-mes" style="margin-top: 15px;"></div>
-            <button onclick="gerarPDFMes()" style="margin-top: 15px; width: 100%;" class="btn-success">Exportar Mês em PDF</button>
+
+            <!-- RESUMO FINANCEIRO SEPARADO -->
+            <div class="painel-resumo-mensal">
+                <div class="linha-resumo">
+                    <span>Avulso / Rotativo:</span>
+                    <strong style="color: var(--text-color);">R$ <span id="total-mes-avulso">0.00</span></strong>
+                </div>
+                <div class="linha-resumo">
+                    <span>Mensalistas:</span>
+                    <strong style="color: var(--qr-color);">R$ <span id="total-mes-mensalistas">0.00</span></strong>
+                </div>
+                <div class="linha-resumo total-geral">
+                    <span>TOTAL CONSOLIDADO:</span>
+                    <strong style="color: var(--accent-light);">R$ <span id="total-mes">0.00</span></strong>
+                </div>
+            </div>
+
+            <button onclick="gerarPDFMes()" style="margin-bottom: 20px; width: 100%;" class="btn-success">Exportar Mês em PDF</button>
+
+            <!-- SEÇÃO 1: LISTA AVULSO / ROTATIVO -->
+            <h3 class="subtitulo-relatorio">1. Avulso / Rotativo (<span id="qtd-mes-avulso">0</span>)</h3>
+            <div id="lista-mes-avulso" style="margin-bottom: 20px;"></div>
+
+            <!-- SEÇÃO 2: LISTA MENSALISTAS -->
+            <h3 class="subtitulo-relatorio" style="border-color: var(--qr-color); color: var(--qr-color);">2. Mensalistas Pagos (<span id="qtd-mes-mensalistas">0</span>)</h3>
+            <div id="lista-mes-mensalistas"></div>
         </section>
     </main>
 
@@ -91,6 +141,30 @@
     <footer class="rodape-brabo">
         <p>• Criado por 𝕄𝕣𝕝•𝕄𝕒𝕣𝕢𝕦𝕖𝕤 •</p>
     </footer>
+
+    <!-- MODAL DAR BAIXA DE MENSALISTA -->
+    <div id="modal-baixa-mensalista" class="modal">
+        <div class="modal-content">
+            <h3 style="color: var(--accent-light); font-size: 0.95em;">Baixa de Mensalidade</h3>
+            <p id="baixa-mensalista-info" style="font-size: 0.9em; color: #ccc; text-align: center;"></p>
+            
+            <label style="font-size: 0.8em; color: #aaa;">Mês de Referência:</label>
+            <input type="month" id="baixa-mensalista-mes">
+
+            <label style="font-size: 0.8em; color: #aaa;">Valor Pago (R$):</label>
+            <input type="number" id="baixa-mensalista-valor" step="0.50">
+
+            <label style="font-size: 0.8em; color: #aaa;">Forma de Pagamento:</label>
+            <select id="baixa-mensalista-pagamento">
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+                <option value="dinheiro">Dinheiro</option>
+            </select>
+
+            <button type="button" onclick="confirmarBaixaMensalista()" class="btn-success">Confirmar Pagamento</button>
+            <button type="button" onclick="fecharModalBaixaMensalista()" class="btn-danger">Cancelar</button>
+        </div>
+    </div>
 
     <!-- MODAL LEITOR DE QR CODE COM STROBO -->
     <div id="modal-qr" class="modal">
@@ -105,7 +179,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE SAÍDA -->
+    <!-- MODAL DE SAÍDA (AVULSO) -->
     <div id="modal-saida" class="modal">
         <div class="modal-content">
             <h3>Registrar Saída: <span id="modal-placa"></span></h3>
